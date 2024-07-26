@@ -102,6 +102,7 @@ import {
   RESOURCE_TYPE_CATALOG_ENTITY,
 } from '@backstage/plugin-catalog-common/alpha';
 import { AuthorizedLocationService } from './AuthorizedLocationService';
+import { AuthorizedLocationAnalyzer } from './AuthorizedLocationAnalyzer';
 import { DefaultProviderDatabase } from '../database/DefaultProviderDatabase';
 import { DefaultCatalogDatabase } from '../database/DefaultCatalogDatabase';
 import { EventBroker, EventsService } from '@backstage/plugin-events-node';
@@ -594,7 +595,10 @@ export class CatalogBuilder {
 
     const locationAnalyzer =
       this.locationAnalyzer ??
-      new RepoLocationAnalyzer(logger, integrations, this.locationAnalyzers);
+      new AuthorizedLocationAnalyzer(
+        new RepoLocationAnalyzer(logger, integrations, this.locationAnalyzers),
+        permissionsService,
+      );
     const locationService = new AuthorizedLocationService(
       new DefaultLocationService(locationStore, orchestrator, {
         allowedLocationTypes: this.allowedLocationType,

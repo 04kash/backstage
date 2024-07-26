@@ -44,6 +44,7 @@ import {
   disallowReadonlyMode,
   encodeCursor,
   locationInput,
+  backstageCredentialsSchema,
   validateRequestBody,
 } from './util';
 import { createOpenApiRouter } from '../schema/openapi.generated';
@@ -301,9 +302,14 @@ export async function createRouter(
         location: locationInput,
         catalogFilename: z.string().optional(),
       });
+      const credentials = await httpAuth.credentials(req);
       const parsedBody = schema.parse(body);
+
       try {
-        const output = await locationAnalyzer.analyzeLocation(parsedBody);
+        const output = await locationAnalyzer.analyzeLocation(
+          parsedBody,
+          credentials,
+        );
         res.status(200).json(output);
       } catch (err) {
         if (

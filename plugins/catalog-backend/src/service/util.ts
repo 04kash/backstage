@@ -55,6 +55,11 @@ export const locationInput = z
   })
   .strict(); // no unknown keys;
 
+export const backstageCredentialsSchema = z.object({
+  expiresAt: z.date().optional(),
+  principal: z.any(),
+});
+
 export async function validateRequestBody<T>(
   req: Request,
   schema: z.Schema<T>,
