@@ -103,6 +103,7 @@ import {
 } from '@backstage/plugin-catalog-common/alpha';
 import { AuthorizedLocationService } from './AuthorizedLocationService';
 import { AuthorizedLocationAnalyzer } from './AuthorizedLocationAnalyzer';
+import { AuthorizedCatalogProcessingOrchestrator } from './AuthorizedCatalogProcessingOrchestrator';
 import { DefaultProviderDatabase } from '../database/DefaultProviderDatabase';
 import { DefaultCatalogDatabase } from '../database/DefaultCatalogDatabase';
 import { EventBroker, EventsService } from '@backstage/plugin-events-node';
@@ -511,15 +512,6 @@ export class CatalogBuilder {
     });
     const integrations = ScmIntegrations.fromConfig(config);
     const rulesEnforcer = DefaultCatalogRulesEnforcer.fromConfig(config);
-    const orchestrator = new DefaultCatalogProcessingOrchestrator({
-      processors,
-      integrations,
-      rulesEnforcer,
-      logger,
-      parser,
-      policy,
-      legacySingleProcessorValidation: this.legacySingleProcessorValidation,
-    });
     const unauthorizedEntitiesCatalog = new DefaultEntitiesCatalog({
       database: dbClient,
       logger,
@@ -575,6 +567,19 @@ export class CatalogBuilder {
     const entityProviders = lodash.uniqBy(
       [...this.entityProviders, locationStore, configLocationProvider],
       provider => provider.getProviderName(),
+    );
+
+    const orchestrator = new AuthorizedCatalogProcessingOrchestrator(
+      new DefaultCatalogProcessingOrchestrator({
+        processors,
+        integrations,
+        rulesEnforcer,
+        logger,
+        parser,
+        policy,
+        legacySingleProcessorValidation: this.legacySingleProcessorValidation,
+      }),
+      permissionsService,
     );
 
     const processingEngine = new DefaultCatalogProcessingEngine({

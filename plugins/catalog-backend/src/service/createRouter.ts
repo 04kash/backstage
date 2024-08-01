@@ -304,11 +304,10 @@ export async function createRouter(
       });
       const credentials = await httpAuth.credentials(req);
       const parsedBody = schema.parse(body);
-
+      const analyzeLocationRequest = { ...parsedBody, credentials };
       try {
         const output = await locationAnalyzer.analyzeLocation(
-          parsedBody,
-          credentials,
+          analyzeLocationRequest,
         );
         res.status(200).json(output);
       } catch (err) {
@@ -347,7 +346,7 @@ export async function createRouter(
           errors: [serializeError(err)],
         });
       }
-
+      const credentials = await httpAuth.credentials(req);
       const processingResult = await orchestrator.process({
         entity: {
           ...entity,
@@ -360,6 +359,7 @@ export async function createRouter(
             },
           },
         },
+        credentials: credentials,
       });
 
       if (!processingResult.ok)

@@ -60,7 +60,10 @@ import {
   TRACER_ID,
   withActiveSpan,
 } from '../util/opentelemetry';
-import { LoggerService } from '@backstage/backend-plugin-api';
+import {
+  BackstageCredentials,
+  LoggerService,
+} from '@backstage/backend-plugin-api';
 
 const tracer = trace.getTracer(TRACER_ID);
 

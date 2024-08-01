@@ -13,29 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 import { NotAllowedError } from '@backstage/errors';
-import { catalogLocationCreatePermission } from '@backstage/plugin-catalog-common/alpha';
+import { catalogEntityCreatePermission } from '@backstage/plugin-catalog-common/alpha';
 import { AuthorizeResult } from '@backstage/plugin-permission-common';
+import {
+  CatalogProcessingOrchestrator,
+  EntityProcessingRequest,
+  EntityProcessingResult,
+} from '../processing/types';
 import { PermissionsService } from '@backstage/backend-plugin-api';
-import { LocationAnalyzer } from '@backstage/plugin-catalog-node';
-import { AnalyzeLocationRequest } from '@backstage/plugin-catalog-common';
-import { AnalyzeLocationResponse } from '@backstage/plugin-catalog-common';
 
-export class AuthorizedLocationAnalyzer implements LocationAnalyzer {
+export class AuthorizedCatalogProcessingOrchestrator
+  implements CatalogProcessingOrchestrator
+{
   constructor(
-    private readonly service: LocationAnalyzer,
+    private readonly service: CatalogProcessingOrchestrator,
     private readonly permissionApi: PermissionsService,
   ) {}
-
-  async analyzeLocation(
-    request: AnalyzeLocationRequest,
-  ): Promise<AnalyzeLocationResponse> {
+  async process(
+    request: EntityProcessingRequest,
+  ): Promise<EntityProcessingResult> {
     const authorizeDecision = (
       await this.permissionApi.authorize(
         [
           {
-            permission: catalogLocationCreatePermission,
+            permission: catalogEntityCreatePermission,
           },
         ],
         { credentials: request.credentials },
@@ -44,6 +46,6 @@ export class AuthorizedLocationAnalyzer implements LocationAnalyzer {
     if (authorizeDecision.result !== AuthorizeResult.ALLOW) {
       throw new NotAllowedError();
     }
-    return this.service.analyzeLocation(request);
+    return this.service.process(request);
   }
 }
