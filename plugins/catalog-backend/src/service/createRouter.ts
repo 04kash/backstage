@@ -44,7 +44,6 @@ import {
   disallowReadonlyMode,
   encodeCursor,
   locationInput,
-  backstageCredentialsSchema,
   validateRequestBody,
 } from './util';
 import { createOpenApiRouter } from '../schema/openapi.generated';
@@ -56,6 +55,10 @@ import {
   LoggerService,
 } from '@backstage/backend-plugin-api';
 import { LocationAnalyzer } from '@backstage/plugin-catalog-node';
+import { PermissionsService } from '@backstage/backend-plugin-api';
+import { NotAllowedError } from '@backstage/errors';
+import { catalogEntityCreatePermission } from '@backstage/plugin-catalog-common/alpha';
+import { AuthorizeResult } from '@backstage/plugin-permission-common';
 
 /**
  * Options used by {@link createRouter}.
@@ -347,6 +350,21 @@ export async function createRouter(
         });
       }
       const credentials = await httpAuth.credentials(req);
+      const authorizeDecision = (
+        await PermissionsService.authorize(
+          [
+            {
+              permission: catalogEntityCreatePermission,
+            },
+          ],
+          { credentials: credentials },
+        )
+      )[0];
+      if (authorizeDecision.result !== AuthorizeResult.ALLOW) {
+        throw new NotAllowedError();
+      }
+      console.log('authorizeDecision');
+      console.log(authorizeDecision);
       const processingResult = await orchestrator.process({
         entity: {
           ...entity,
@@ -359,7 +377,6 @@ export async function createRouter(
             },
           },
         },
-        credentials: credentials,
       });
 
       if (!processingResult.ok)

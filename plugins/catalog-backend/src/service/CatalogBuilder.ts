@@ -103,7 +103,6 @@ import {
 } from '@backstage/plugin-catalog-common/alpha';
 import { AuthorizedLocationService } from './AuthorizedLocationService';
 import { AuthorizedLocationAnalyzer } from './AuthorizedLocationAnalyzer';
-import { AuthorizedCatalogProcessingOrchestrator } from './AuthorizedCatalogProcessingOrchestrator';
 import { DefaultProviderDatabase } from '../database/DefaultProviderDatabase';
 import { DefaultCatalogDatabase } from '../database/DefaultCatalogDatabase';
 import { EventBroker, EventsService } from '@backstage/plugin-events-node';
@@ -569,18 +568,15 @@ export class CatalogBuilder {
       provider => provider.getProviderName(),
     );
 
-    const orchestrator = new AuthorizedCatalogProcessingOrchestrator(
-      new DefaultCatalogProcessingOrchestrator({
-        processors,
-        integrations,
-        rulesEnforcer,
-        logger,
-        parser,
-        policy,
-        legacySingleProcessorValidation: this.legacySingleProcessorValidation,
-      }),
-      permissionsService,
-    );
+    const orchestrator = new DefaultCatalogProcessingOrchestrator({
+      processors,
+      integrations,
+      rulesEnforcer,
+      logger,
+      parser,
+      policy,
+      legacySingleProcessorValidation: this.legacySingleProcessorValidation,
+    });
 
     const processingEngine = new DefaultCatalogProcessingEngine({
       config,
