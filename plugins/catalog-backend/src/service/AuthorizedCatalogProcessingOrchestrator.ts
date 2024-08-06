@@ -21,7 +21,10 @@ import {
   EntityProcessingRequest,
   EntityProcessingResult,
 } from '../processing/types';
-import { PermissionsService } from '@backstage/backend-plugin-api';
+import {
+  BackstageCredentials,
+  PermissionsService,
+} from '@backstage/backend-plugin-api';
 
 export class AuthorizedCatalogProcessingOrchestrator
   implements CatalogProcessingOrchestrator
@@ -33,6 +36,13 @@ export class AuthorizedCatalogProcessingOrchestrator
   async process(
     request: EntityProcessingRequest,
   ): Promise<EntityProcessingResult> {
+    if (request.credentials) {
+      await this.ensureAuthorized(request.credentials);
+    }
+    return this.service.process(request);
+  }
+
+  private async ensureAuthorized(credentials: BackstageCredentials) {
     const authorizeDecision = (
       await this.permissionApi.authorize(
         [
@@ -40,12 +50,12 @@ export class AuthorizedCatalogProcessingOrchestrator
             permission: catalogEntityCreatePermission,
           },
         ],
-        { credentials: request.credentials },
+        { credentials },
       )
     )[0];
+
     if (authorizeDecision.result !== AuthorizeResult.ALLOW) {
       throw new NotAllowedError();
     }
-    return this.service.process(request);
   }
 }

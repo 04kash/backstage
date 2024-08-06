@@ -76,6 +76,7 @@ import { DefaultCatalogProcessingEngine } from '../processing/DefaultCatalogProc
 import { DefaultLocationService } from './DefaultLocationService';
 import { DefaultEntitiesCatalog } from './DefaultEntitiesCatalog';
 import { DefaultCatalogProcessingOrchestrator } from '../processing/DefaultCatalogProcessingOrchestrator';
+import { AuthorizedCatalogProcessingOrchestrator } from './AuthorizedCatalogProcessingOrchestrator';
 import { DefaultStitcher } from '../stitching/DefaultStitcher';
 import { createRouter } from './createRouter';
 import { DefaultRefreshService } from './DefaultRefreshService';
@@ -568,15 +569,18 @@ export class CatalogBuilder {
       provider => provider.getProviderName(),
     );
 
-    const orchestrator = new DefaultCatalogProcessingOrchestrator({
-      processors,
-      integrations,
-      rulesEnforcer,
-      logger,
-      parser,
-      policy,
-      legacySingleProcessorValidation: this.legacySingleProcessorValidation,
-    });
+    const orchestrator = new AuthorizedCatalogProcessingOrchestrator(
+      new DefaultCatalogProcessingOrchestrator({
+        processors,
+        integrations,
+        rulesEnforcer,
+        logger,
+        parser,
+        policy,
+        legacySingleProcessorValidation: this.legacySingleProcessorValidation,
+      }),
+      permissionsService,
+    );
 
     const processingEngine = new DefaultCatalogProcessingEngine({
       config,
