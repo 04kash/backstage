@@ -43,6 +43,8 @@ import {
 import { DefaultWorkspaceService, WorkspaceService } from './WorkspaceService';
 import { WorkspaceProvider } from '@backstage/plugin-scaffolder-node/alpha';
 
+import { AuditLogger } from '@janus-idp/backstage-plugin-audit-log-node';
+
 type TaskState = {
   checkpoints: {
     [key: string]:
@@ -71,6 +73,7 @@ export class TaskManager implements TaskContext {
     storage: TaskStore,
     abortSignal: AbortSignal,
     logger: Logger,
+    auditLogger: AuditLogger,
     auth?: AuthService,
     config?: Config,
     additionalWorkspaceProviders?: Record<string, WorkspaceProvider>,
@@ -88,6 +91,7 @@ export class TaskManager implements TaskContext {
       abortSignal,
       logger,
       workspaceService,
+      auditLogger,
       auth,
     );
     agent.startTimeout();
@@ -101,8 +105,13 @@ export class TaskManager implements TaskContext {
     private readonly signal: AbortSignal,
     private readonly logger: Logger,
     private readonly workspaceService: WorkspaceService,
+    private readonly auditLogger: AuditLogger,
     private readonly auth?: AuthService,
   ) {}
+
+  get taskId() {
+    return this.task.taskId;
+  }
 
   get spec() {
     return this.task.spec;
@@ -200,6 +209,34 @@ export class TaskManager implements TaskContext {
     if (this.heartbeatTimeoutId) {
       clearTimeout(this.heartbeatTimeoutId);
     }
+    const commonAuditFields = {
+      eventName: 'ScaffolderTaskExecution',
+      actorId: 'scaffolder-backend',
+      stage: 'completion',
+      metadata: {
+        taskId: this.task.taskId,
+        taskParameters: this.task.spec.parameters,
+      },
+    };
+    if (result === 'failed') {
+      await this.auditLogger?.auditLog({
+        ...commonAuditFields,
+        status: 'failed',
+        level: 'error',
+        errors: [metadata?.error],
+        message: `Scaffolding task with taskId: ${this.task.taskId} failed`,
+      });
+    } else {
+      await this.auditLogger?.auditLog({
+        ...commonAuditFields,
+        status: 'succeeded',
+        metadata: {
+          ...commonAuditFields.metadata,
+          ...metadata,
+        },
+        message: `Scaffolding task with taskId: ${this.task.taskId} completed successfully`,
+      });
+    }
   }
 
   private startTimeout() {
@@ -269,6 +306,7 @@ export class StorageTaskBroker implements TaskBroker {
   constructor(
     private readonly storage: TaskStore,
     private readonly logger: Logger,
+    private readonly auditLogger: AuditLogger,
     private readonly config?: Config,
     private readonly auth?: AuthService,
     private readonly additionalWorkspaceProviders?: Record<
@@ -329,10 +367,7 @@ export class StorageTaskBroker implements TaskBroker {
 
   public async recoverTasks(): Promise<void> {
     const enabled =
-      (this.config &&
-        this.config.getOptionalBoolean(
-          'scaffolder.EXPERIMENTAL_recoverTasks',
-        )) ??
+      this.config?.getOptionalBoolean('scaffolder.EXPERIMENTAL_recoverTasks') ??
       false;
 
     if (enabled) {
@@ -371,6 +406,7 @@ export class StorageTaskBroker implements TaskBroker {
           this.storage,
           abortController.signal,
           this.logger,
+          this.auditLogger,
           this.auth,
           this.config,
           this.additionalWorkspaceProviders,
@@ -450,6 +486,16 @@ export class StorageTaskBroker implements TaskBroker {
     await Promise.all(
       tasks.map(async task => {
         try {
+          this.auditLogger.auditLog({
+            actorId: 'scaffolder-backend',
+            eventName: 'ScaffolderStaleTaskCancellation',
+            stage: 'initiation',
+            status: 'succeeded',
+            metadata: {
+              taskId: task.taskId,
+            },
+            message: `Attempting to cancel Stale scaffolding task ${task.taskId} because the task worker lost connection to the task broker`,
+          });
           await this.storage.completeTask({
             taskId: task.taskId,
             status: 'failed',
@@ -458,8 +504,35 @@ export class StorageTaskBroker implements TaskBroker {
                 'The task was cancelled because the task worker lost connection to the task broker',
             },
           });
+          this.auditLogger.auditLog({
+            actorId: 'scaffolder-backend',
+            eventName: 'ScaffolderStaleTaskCancellation',
+            stage: 'completion',
+            status: 'succeeded',
+            metadata: {
+              taskId: task.taskId,
+            },
+            message: `Stale scaffolding task ${task.taskId} successfully cancelled`,
+          });
         } catch (error) {
-          this.logger.warn(`Failed to cancel task '${task.taskId}', ${error}`);
+          this.auditLogger.auditLog({
+            actorId: 'scaffolder-backend',
+            eventName: 'ScaffolderStaleTaskCancellation',
+            stage: 'completion',
+            status: 'failed',
+            level: 'error',
+            metadata: {
+              taskId: task.taskId,
+            },
+            errors: [
+              {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+              },
+            ],
+            message: `Failed to cancel stale scaffolding task ${task.taskId}`,
+          });
         }
       }),
     );
