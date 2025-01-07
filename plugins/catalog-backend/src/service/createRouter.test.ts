@@ -1094,16 +1094,19 @@ describe('createRouter readonly disabled', () => {
     it('can remove', async () => {
       entitiesCatalog.removeEntityByUid.mockResolvedValue(undefined);
       entitiesCatalog.entities.mockResolvedValue({
-        entities: [
-          {
-            apiVersion: 'v1',
-            kind: 'k',
-            metadata: {
-              name: 'n',
-              namespace: 'ns',
+        entities: {
+          type: 'object',
+          entities: [
+            {
+              apiVersion: 'v1',
+              kind: 'k',
+              metadata: {
+                name: 'n',
+                namespace: 'ns',
+              },
             },
-          },
-        ],
+          ],
+        },
         pageInfo: { hasNextPage: false },
       });
       const response = await request(app).delete('/entities/by-uid/apa');
@@ -1152,7 +1155,7 @@ describe('createRouter readonly disabled', () => {
         new NotFoundError('nope'),
       );
       entitiesCatalog.entities.mockResolvedValue({
-        entities: [],
+        entities: { type: 'object', entities: [] },
         pageInfo: { hasNextPage: false },
       });
       const response = await request(app).delete('/entities/by-uid/apa');
@@ -2017,16 +2020,19 @@ describe('createRouter readonly and raw json enabled', () => {
     // this delete is allowed as there is no other way to remove entities
     it('is allowed', async () => {
       entitiesCatalog.entities.mockResolvedValue({
-        entities: [
-          {
-            apiVersion: 'v1',
-            kind: 'k',
-            metadata: {
-              name: 'n',
-              namespace: 'ns',
+        entities: {
+          type: 'object',
+          entities: [
+            {
+              apiVersion: 'v1',
+              kind: 'k',
+              metadata: {
+                name: 'n',
+                namespace: 'ns',
+              },
             },
-          },
-        ],
+          ],
+        },
         pageInfo: { hasNextPage: false },
       });
       const response = await request(app).delete('/entities/by-uid/apa');

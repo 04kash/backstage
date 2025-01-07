@@ -398,6 +398,7 @@ export async function createRouter(
       .get('/entities/by-uid/:uid', async (req, res) => {
         const { uid } = req.params;
         const actorId = await auditLogger.getActorId(req);
+        let entityRef: string | undefined | null;
         try {
           await auditLogger.auditLog({
             eventName: 'CatalogEntityFetchByUid',
@@ -415,6 +416,12 @@ export async function createRouter(
             credentials: await httpAuth.credentials(req),
           });
           writeSingleEntityResponse(res, entities, `No entity with uid ${uid}`);
+          if (entities.entities.length) {
+            entityRef =
+              entities.type === 'object'
+                ? stringifyEntityRef(entities.entities[0] as Entity)
+                : entities.entities[0];
+          }
           await auditLogger.auditLog({
             eventName: 'CatalogEntityFetchByUid',
             actorId,
@@ -423,7 +430,7 @@ export async function createRouter(
             request: req,
             metadata: {
               uid: uid,
-              entityRef: stringifyEntityRef(entities[0]),
+              entityRef: entityRef,
             },
             response: {
               status: 200,
@@ -456,15 +463,18 @@ export async function createRouter(
       .delete('/entities/by-uid/:uid', async (req, res) => {
         const { uid } = req.params;
         const actorId = await auditLogger.getActorId(req);
-        let entityRef: string | undefined;
+        let entityRef: string | undefined | null;
         try {
           // Get the entityRef of the UID so users can more easily identity the entity
           const { entities } = await entitiesCatalog.entities({
             filter: basicEntityFilter({ 'metadata.uid': uid }),
             credentials: await httpAuth.credentials(req),
           });
-          if (entities.length) {
-            entityRef = stringifyEntityRef(entities[0]);
+          if (entities.entities.length) {
+            entityRef =
+              entities.type === 'object'
+                ? stringifyEntityRef(entities.entities[0] as Entity)
+                : entities.entities[0];
           }
           await auditLogger.auditLog({
             eventName: 'CatalogEntityDeletion',
