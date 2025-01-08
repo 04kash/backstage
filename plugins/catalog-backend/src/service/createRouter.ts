@@ -334,24 +334,6 @@ export async function createRouter(
               credentials: await httpAuth.credentials(req),
             });
 
-          await writeEntitiesResponse({
-            res,
-            items,
-            alwaysUseObjectMode: !disableRelationsCompatibility,
-            responseWrapper: entities => ({
-              items: entities,
-              totalItems,
-              pageInfo: {
-                ...(pageInfo.nextCursor && {
-                  nextCursor: encodeCursor(pageInfo.nextCursor),
-                }),
-                ...(pageInfo.prevCursor && {
-                  prevCursor: encodeCursor(pageInfo.prevCursor),
-                }),
-              },
-            }),
-          });
-
           await auditLogger.auditLog({
             eventName: 'QueriedCatalogEntityFetch',
             actorId,
@@ -374,6 +356,24 @@ export async function createRouter(
               status: 200,
             },
             message: `Queried entity fetch attempt by ${actorId} succeeded`,
+          });
+
+          await writeEntitiesResponse({
+            res,
+            items,
+            alwaysUseObjectMode: !disableRelationsCompatibility,
+            responseWrapper: entities => ({
+              items: entities,
+              totalItems,
+              pageInfo: {
+                ...(pageInfo.nextCursor && {
+                  nextCursor: encodeCursor(pageInfo.nextCursor),
+                }),
+                ...(pageInfo.prevCursor && {
+                  prevCursor: encodeCursor(pageInfo.prevCursor),
+                }),
+              },
+            }),
           });
         } catch (err) {
           await auditLogger.auditLog({
@@ -398,7 +398,6 @@ export async function createRouter(
       .get('/entities/by-uid/:uid', async (req, res) => {
         const { uid } = req.params;
         const actorId = await auditLogger.getActorId(req);
-        let entityRef: string | undefined | null;
         try {
           await auditLogger.auditLog({
             eventName: 'CatalogEntityFetchByUid',
@@ -415,13 +414,7 @@ export async function createRouter(
             filter: basicEntityFilter({ 'metadata.uid': uid }),
             credentials: await httpAuth.credentials(req),
           });
-          writeSingleEntityResponse(res, entities, `No entity with uid ${uid}`);
-          if (entities.entities.length) {
-            entityRef =
-              entities.type === 'object'
-                ? stringifyEntityRef(entities.entities[0] as Entity)
-                : entities.entities[0];
-          }
+
           await auditLogger.auditLog({
             eventName: 'CatalogEntityFetchByUid',
             actorId,
@@ -430,13 +423,15 @@ export async function createRouter(
             request: req,
             metadata: {
               uid: uid,
-              entityRef: entityRef,
+              entityRef: entities,
             },
             response: {
               status: 200,
             },
             message: `Fetch attempt for entity with uid ${uid} by ${actorId} succeeded`,
           });
+
+          writeSingleEntityResponse(res, entities, `No entity with uid ${uid}`);
         } catch (err) {
           await auditLogger.auditLog({
             eventName: 'CatalogEntityFetchByUid',
@@ -463,19 +458,12 @@ export async function createRouter(
       .delete('/entities/by-uid/:uid', async (req, res) => {
         const { uid } = req.params;
         const actorId = await auditLogger.getActorId(req);
-        let entityRef: string | undefined | null;
         try {
           // Get the entityRef of the UID so users can more easily identity the entity
           const { entities } = await entitiesCatalog.entities({
             filter: basicEntityFilter({ 'metadata.uid': uid }),
             credentials: await httpAuth.credentials(req),
           });
-          if (entities.entities.length) {
-            entityRef =
-              entities.type === 'object'
-                ? stringifyEntityRef(entities.entities[0] as Entity)
-                : entities.entities[0];
-          }
           await auditLogger.auditLog({
             eventName: 'CatalogEntityDeletion',
             actorId,
@@ -484,7 +472,7 @@ export async function createRouter(
             request: req,
             metadata: {
               uid: uid,
-              entityRef: entityRef,
+              entityRef: entities,
             },
             message: `Deletion attempt for entity with uid ${uid} initiated by ${actorId}`,
           });
@@ -499,7 +487,7 @@ export async function createRouter(
             request: req,
             metadata: {
               uid: uid,
-              entityRef: entityRef,
+              entityRef: entities,
             },
             response: {
               status: 204,
@@ -547,11 +535,7 @@ export async function createRouter(
             entityRefs: [stringifyEntityRef({ kind, namespace, name })],
             credentials: await httpAuth.credentials(req),
           });
-          writeSingleEntityResponse(
-            res,
-            items,
-            `No entity named '${name}' found, with kind '${kind}' in namespace '${namespace}'`,
-          );
+
           await auditLogger.auditLog({
             eventName: 'CatalogEntityFetchByName',
             actorId,
@@ -566,6 +550,12 @@ export async function createRouter(
             },
             message: `Fetch attempt for entity with entityRef ${entityRef} by ${actorId} succeeded`,
           });
+
+          writeSingleEntityResponse(
+            res,
+            items,
+            `No entity named '${name}' found, with kind '${kind}' in namespace '${namespace}'`,
+          );
         } catch (err) {
           await auditLogger.auditLog({
             eventName: 'CatalogEntityFetchByName',
@@ -610,7 +600,7 @@ export async function createRouter(
             const response = await entitiesCatalog.entityAncestry(entityRef, {
               credentials: await httpAuth.credentials(req),
             });
-            res.status(200).json(response);
+
             await auditLogger.auditLog({
               eventName: 'CatalogEntityAncestryFetch',
               actorId,
@@ -631,6 +621,8 @@ export async function createRouter(
               },
               message: `Fetch attempt for entity ancestor of entity ${entityRef} by ${actorId} succeeded`,
             });
+
+            res.status(200).json(response);
           } catch (err) {
             await auditLogger.auditLog({
               eventName: 'CatalogEntityAncestryFetch',
@@ -673,14 +665,6 @@ export async function createRouter(
             fields: parseEntityTransformParams(req.query, request.fields),
             credentials: await httpAuth.credentials(req),
           });
-          await writeEntitiesResponse({
-            res,
-            items,
-            alwaysUseObjectMode: !disableRelationsCompatibility,
-            responseWrapper: entities => ({
-              items: entities,
-            }),
-          });
 
           await auditLogger.auditLog({
             eventName: 'CatalogEntityBatchFetch',
@@ -695,6 +679,15 @@ export async function createRouter(
               status: 200,
             },
             message: `Batch entity fetch attempt by ${actorId} succeeded`,
+          });
+
+          await writeEntitiesResponse({
+            res,
+            items,
+            alwaysUseObjectMode: !disableRelationsCompatibility,
+            responseWrapper: entities => ({
+              items: entities,
+            }),
           });
         } catch (err) {
           await auditLogger.auditLog({
@@ -732,7 +725,6 @@ export async function createRouter(
             facets: parseEntityFacetParams(req.query),
             credentials: await httpAuth.credentials(req),
           });
-          res.status(200).json(response);
           await auditLogger.auditLog({
             eventName: 'CatalogEntityFacetFetch',
             actorId,
@@ -742,6 +734,7 @@ export async function createRouter(
             response: { status: 200 },
             message: `Entity facet fetch attempt by ${actorId} succeeded`,
           });
+          res.status(200).json(response);
         } catch (err) {
           await auditLogger.auditLog({
             eventName: 'CatalogEntityFacetFetch',
@@ -852,7 +845,6 @@ export async function createRouter(
           const locations = await locationService.listLocations({
             credentials: await httpAuth.credentials(req),
           });
-          res.status(200).json(locations.map(l => ({ data: l })));
           await auditLogger.auditLog({
             eventName: 'CatalogLocationFetch',
             status: 'succeeded',
@@ -864,6 +856,7 @@ export async function createRouter(
             },
             message: `Fetch attempt of locations by ${actorId} succeeded`,
           });
+          res.status(200).json(locations.map(l => ({ data: l })));
         } catch (err) {
           await auditLogger.auditLog({
             eventName: 'CatalogLocationFetch',
@@ -903,7 +896,6 @@ export async function createRouter(
           const output = await locationService.getLocation(id, {
             credentials: await httpAuth.credentials(req),
           });
-          res.status(200).json(output);
           await auditLogger.auditLog({
             eventName: 'CatalogLocationFetchById',
             status: 'succeeded',
@@ -919,6 +911,7 @@ export async function createRouter(
             request: req,
             message: `Fetch attempt of location with id: ${id} by ${actorId} succeeded`,
           });
+          res.status(200).json(output);
         } catch (err) {
           await auditLogger.auditLog({
             eventName: 'CatalogLocationFetchById',
@@ -1025,7 +1018,6 @@ export async function createRouter(
             { kind, namespace, name },
             { credentials: await httpAuth.credentials(req) },
           );
-          res.status(200).json(output);
           await auditLogger.auditLog({
             eventName: 'CatalogLocationFetchByEntityRef',
             status: 'succeeded',
@@ -1041,6 +1033,7 @@ export async function createRouter(
             request: req,
             message: `Fetch attempt for location ${locationRef} by ${actorId} succeeded`,
           });
+          res.status(200).json(output);
         } catch (err) {
           await auditLogger.auditLog({
             eventName: 'CatalogLocationFetchByEntityRef',
@@ -1097,7 +1090,6 @@ export async function createRouter(
             parsedBody,
             credentials,
           );
-          res.status(200).json(output);
           await auditLogger.auditLog({
             eventName: 'CatalogLocationAnalyze',
             status: 'succeeded',
@@ -1110,6 +1102,7 @@ export async function createRouter(
             },
             message: `Analyze location for location by ${actorId} succeeded`,
           });
+          res.status(200).json(output);
         } catch (err) {
           if (
             // Catch errors from parse-url library.
