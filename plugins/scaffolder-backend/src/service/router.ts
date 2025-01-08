@@ -499,7 +499,7 @@ export async function createRouter(
             template.metadata.namespace || 'default'
           }/${template.metadata.name}`;
 
-          const responseBody = res.json({
+          const responseBody = {
             title: template.metadata.title ?? template.metadata.name,
             ...(presentation ? { presentation } : {}),
             description: template.metadata.description,
@@ -511,7 +511,7 @@ export async function createRouter(
             })),
             EXPERIMENTAL_formDecorators:
               template.spec.EXPERIMENTAL_formDecorators,
-          });
+          };
           await auditLogger.auditLog({
             eventName: 'ScaffolderParameterSchemaFetch',
             actorId,
