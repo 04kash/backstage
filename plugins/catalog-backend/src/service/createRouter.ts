@@ -422,6 +422,8 @@ export async function createRouter(
                 : entities.entities[0];
           }
 
+          writeSingleEntityResponse(res, entities, `No entity with uid ${uid}`);
+
           await auditLogger.auditLog({
             eventName: 'CatalogEntityFetchByUid',
             actorId,
@@ -437,8 +439,6 @@ export async function createRouter(
             },
             message: `Fetch attempt for entity with uid ${uid} by ${actorId} succeeded`,
           });
-
-          writeSingleEntityResponse(res, entities, `No entity with uid ${uid}`);
         } catch (err) {
           await auditLogger.auditLog({
             eventName: 'CatalogEntityFetchByUid',
@@ -550,6 +550,12 @@ export async function createRouter(
             credentials: await httpAuth.credentials(req),
           });
 
+          writeSingleEntityResponse(
+            res,
+            items,
+            `No entity named '${name}' found, with kind '${kind}' in namespace '${namespace}'`,
+          );
+
           await auditLogger.auditLog({
             eventName: 'CatalogEntityFetchByName',
             actorId,
@@ -564,12 +570,6 @@ export async function createRouter(
             },
             message: `Fetch attempt for entity with entityRef ${entityRef} by ${actorId} succeeded`,
           });
-
-          writeSingleEntityResponse(
-            res,
-            items,
-            `No entity named '${name}' found, with kind '${kind}' in namespace '${namespace}'`,
-          );
         } catch (err) {
           await auditLogger.auditLog({
             eventName: 'CatalogEntityFetchByName',
