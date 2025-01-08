@@ -398,6 +398,7 @@ export async function createRouter(
       .get('/entities/by-uid/:uid', async (req, res) => {
         const { uid } = req.params;
         const actorId = await auditLogger.getActorId(req);
+        let entityRef: string | undefined | null;
         try {
           await auditLogger.auditLog({
             eventName: 'CatalogEntityFetchByUid',
@@ -414,6 +415,12 @@ export async function createRouter(
             filter: basicEntityFilter({ 'metadata.uid': uid }),
             credentials: await httpAuth.credentials(req),
           });
+          if (entities.entities.length) {
+            entityRef =
+              entities.type === 'object'
+                ? stringifyEntityRef(entities.entities[0] as Entity)
+                : entities.entities[0];
+          }
 
           await auditLogger.auditLog({
             eventName: 'CatalogEntityFetchByUid',
@@ -423,7 +430,7 @@ export async function createRouter(
             request: req,
             metadata: {
               uid: uid,
-              entityRef: entities,
+              entityRef: entityRef,
             },
             response: {
               status: 200,
@@ -458,12 +465,19 @@ export async function createRouter(
       .delete('/entities/by-uid/:uid', async (req, res) => {
         const { uid } = req.params;
         const actorId = await auditLogger.getActorId(req);
+        let entityRef: string | undefined | null;
         try {
           // Get the entityRef of the UID so users can more easily identity the entity
           const { entities } = await entitiesCatalog.entities({
             filter: basicEntityFilter({ 'metadata.uid': uid }),
             credentials: await httpAuth.credentials(req),
           });
+          if (entities.entities.length) {
+            entityRef =
+              entities.type === 'object'
+                ? stringifyEntityRef(entities.entities[0] as Entity)
+                : entities.entities[0];
+          }
           await auditLogger.auditLog({
             eventName: 'CatalogEntityDeletion',
             actorId,
@@ -472,7 +486,7 @@ export async function createRouter(
             request: req,
             metadata: {
               uid: uid,
-              entityRef: entities,
+              entityRef: entityRef,
             },
             message: `Deletion attempt for entity with uid ${uid} initiated by ${actorId}`,
           });
@@ -487,7 +501,7 @@ export async function createRouter(
             request: req,
             metadata: {
               uid: uid,
-              entityRef: entities,
+              entityRef: entityRef,
             },
             response: {
               status: 204,

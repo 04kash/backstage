@@ -252,7 +252,7 @@ describe('NunjucksWorkflowRunner', () => {
 
     const error: Error = await getError(async () => runner.execute(task));
     expect(error.message).toBe(
-      /Template action with ID 'does-not-exist' is not registered/,
+      "Template action with ID 'does-not-exist' is not registered. See https://backstage.io/docs/features/software-templates/builtin-actions/ on how to add a new action module.",
     );
 
     const auditLogErrorMeta = {
@@ -271,7 +271,7 @@ describe('NunjucksWorkflowRunner', () => {
         {
           name: 'NotFoundError',
           message:
-            "Template action with ID 'does-not-exist' is not registered.",
+            "Template action with ID 'does-not-exist' is not registered. See https://backstage.io/docs/features/software-templates/builtin-actions/ on how to add a new action module.",
           stack: error.stack,
         },
       ],
