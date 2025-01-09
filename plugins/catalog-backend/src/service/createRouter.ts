@@ -288,7 +288,18 @@ export async function createRouter(
 
               cursor = result.pageInfo?.nextCursor;
             } while (cursor);
-
+            await auditLogger.auditLog({
+              eventName: 'CatalogEntityFetch',
+              actorId,
+              status: 'succeeded',
+              stage: 'completion',
+              request: req as unknown as express.Request,
+              // Let's not log out the entities since this can make the log very big due to it not being paged?
+              response: {
+                status: 200,
+              },
+              message: `Entity fetch attempt by ${actorId} succeeded`,
+            });
             responseStream.complete();
           } finally {
             responseStream.close();
