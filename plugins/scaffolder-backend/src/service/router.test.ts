@@ -251,7 +251,7 @@ describe('createRouter', () => {
       loggerSpy = jest.spyOn(logger, 'info');
       loggerErrorSpy = jest.spyOn(logger, 'error');
 
-      uuidSpy.mockReturnValue('a-random-id');
+      (uuidSpy as jest.Mock).mockReturnValue('a-random-id');
       const router = await createRouter({
         logger: logger,
         config: new ConfigReader({}),
@@ -1075,7 +1075,7 @@ data: {"id":1,"taskId":"a-random-id","type":"completion","createdAt":"","body":{
       loggerSpy = jest.spyOn(logger, 'info');
       loggerErrorSpy = jest.spyOn(logger, 'error');
 
-      uuidSpy.mockReturnValue('a-random-id');
+      (uuidSpy as jest.Mock).mockReturnValue('a-random-id');
       const router = await createRouter({
         logger: logger,
         config: new ConfigReader({}),
