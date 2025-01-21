@@ -38,6 +38,7 @@ export interface Config {
                   allowedDomains?: string[];
                 }
               | { resolver: 'emailMatchingUserEntityProfileEmail' }
+              | { resolver: 'preferredUsernameMatchingUserEntityName' }
             >;
           };
         };
