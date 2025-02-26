@@ -55,6 +55,7 @@
     "@backstage/plugin-scaffolder-backend": "workspace:^",
     "@backstage/plugin-scaffolder-backend-module-github": "workspace:^",
     "@backstage/plugin-scaffolder-backend-module-notifications": "workspace:^",
+    "@backstage/plugin-scaffolder-common": "workspace:^",
     "@backstage/plugin-search-backend": "workspace:^",
     "@backstage/plugin-search-backend-module-catalog": "workspace:^",
     "@backstage/plugin-search-backend-module-explore": "workspace:^",

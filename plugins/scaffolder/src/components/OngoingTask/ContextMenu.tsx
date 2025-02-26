@@ -32,11 +32,7 @@ import React, { useState } from 'react';
 import { useAnalytics, useApi } from '@backstage/core-plugin-api';
 import { scaffolderApiRef } from '@backstage/plugin-scaffolder-react';
 import { usePermission } from '@backstage/plugin-permission-react';
-import {
-  taskCancelPermission,
-  taskReadPermission,
-  taskCreatePermission,
-} from '@backstage/plugin-scaffolder-common/alpha';
+import { taskCreatePermission } from '@backstage/plugin-scaffolder-common/alpha';
 import { useTranslationRef } from '@backstage/core-plugin-api/alpha';
 import { scaffolderTranslationRef } from '../../translation';
 
@@ -87,20 +83,12 @@ export const ContextMenu = (props: ContextMenuProps) => {
     }
   });
 
-  const { allowed: canCancelTask } = usePermission({
-    permission: taskCancelPermission,
-  });
-
-  const { allowed: canReadTask } = usePermission({
-    permission: taskReadPermission,
-  });
-
   const { allowed: canCreateTask } = usePermission({
     permission: taskCreatePermission,
   });
 
   // Start Over endpoint requires user to have both read (to grab parameters) and create (to create new task) permissions
-  const canStartOver = canReadTask && canCreateTask;
+  const canStartOver = canCreateTask;
 
   return (
     <>
@@ -172,11 +160,7 @@ export const ContextMenu = (props: ContextMenuProps) => {
           )}
           <MenuItem
             onClick={cancel}
-            disabled={
-              !cancelEnabled ||
-              cancelStatus !== 'not-executed' ||
-              !canCancelTask
-            }
+            disabled={!cancelEnabled || cancelStatus !== 'not-executed'}
             data-testid="cancel-task"
           >
             <ListItemIcon>
