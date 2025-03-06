@@ -293,6 +293,8 @@ class PermissionIntegrationMetadataStore {
     resourceType: string,
     refs: string[],
   ): Promise<Record<string, unknown>> {
+    console.log(`resourceType: ${resourceType}`);
+    console.log(`refs: ${refs}`);
     const resource = this.#resourcesByType.get(resourceType);
     if (!resource?.getResources) {
       throw new NotImplementedError(
@@ -482,6 +484,8 @@ export function createPermissionIntegrationRouter<
       }
 
       const { items: requests } = parseResult.data;
+
+      console.log(`getResources requests: ${JSON.stringify(requests)}`);
 
       const invalidResourceTypes = requests.filter(
         i => !store.hasResourceType(i.resourceType),

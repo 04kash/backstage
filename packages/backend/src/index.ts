@@ -16,6 +16,7 @@
 
 import { createBackend } from '@backstage/backend-defaults';
 import { createBackendFeatureLoader } from '@backstage/backend-plugin-api';
+import { permissionModuleANamePolicy } from './module';
 
 const backend = createBackend();
 
@@ -42,9 +43,10 @@ backend.add(import('@backstage/plugin-catalog-backend'));
 backend.add(import('@backstage/plugin-events-backend'));
 backend.add(import('@backstage/plugin-devtools-backend'));
 backend.add(import('@backstage/plugin-kubernetes-backend'));
-backend.add(
-  import('@backstage/plugin-permission-backend-module-allow-all-policy'),
-);
+// backend.add(
+//   import('@backstage/plugin-permission-backend-module-allow-all-policy'),
+// );
+backend.add(permissionModuleANamePolicy);
 backend.add(import('@backstage/plugin-permission-backend'));
 backend.add(import('@backstage/plugin-proxy-backend'));
 backend.add(import('@backstage/plugin-scaffolder-backend'));

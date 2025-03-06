@@ -32,6 +32,7 @@
   "dependencies": {
     "@backstage/backend-defaults": "workspace:^",
     "@backstage/backend-plugin-api": "workspace:^",
+    "@backstage/catalog-client": "workspace:^",
     "@backstage/catalog-model": "workspace:^",
     "@backstage/plugin-app-backend": "workspace:^",
     "@backstage/plugin-auth-backend": "workspace:^",
@@ -55,6 +56,7 @@
     "@backstage/plugin-scaffolder-backend": "workspace:^",
     "@backstage/plugin-scaffolder-backend-module-github": "workspace:^",
     "@backstage/plugin-scaffolder-backend-module-notifications": "workspace:^",
+    "@backstage/plugin-scaffolder-common": "workspace:^",
     "@backstage/plugin-search-backend": "workspace:^",
     "@backstage/plugin-search-backend-module-catalog": "workspace:^",
     "@backstage/plugin-search-backend-module-explore": "workspace:^",

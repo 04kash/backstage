@@ -7745,6 +7745,7 @@ __metadata:
     "@backstage/config": "workspace:^"
     "@backstage/errors": "workspace:^"
     "@backstage/integration": "workspace:^"
+    "@backstage/plugin-permission-common": "workspace:^"
     "@backstage/plugin-scaffolder-common": "workspace:^"
     "@backstage/types": "workspace:^"
     concat-stream: ^2.0.0
@@ -28972,6 +28973,7 @@ __metadata:
   dependencies:
     "@backstage/backend-defaults": "workspace:^"
     "@backstage/backend-plugin-api": "workspace:^"
+    "@backstage/catalog-client": "workspace:^"
     "@backstage/catalog-model": "workspace:^"
     "@backstage/cli": "workspace:^"
     "@backstage/plugin-app-backend": "workspace:^"
@@ -28996,6 +28998,7 @@ __metadata:
     "@backstage/plugin-scaffolder-backend": "workspace:^"
     "@backstage/plugin-scaffolder-backend-module-github": "workspace:^"
     "@backstage/plugin-scaffolder-backend-module-notifications": "workspace:^"
+    "@backstage/plugin-scaffolder-common": "workspace:^"
     "@backstage/plugin-search-backend": "workspace:^"
     "@backstage/plugin-search-backend-module-catalog": "workspace:^"
     "@backstage/plugin-search-backend-module-explore": "workspace:^"
