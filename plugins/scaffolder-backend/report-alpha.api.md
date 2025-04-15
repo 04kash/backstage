@@ -102,17 +102,6 @@ export const scaffolderTaskConditions: Conditions<{
       createdBy: string[];
     }
   >;
-  hasTemplateEntityRefs: PermissionRule<
-    SerializedTask,
-    {
-      property: TaskFilter['property'];
-      values: any;
-    },
-    'scaffolder-task',
-    {
-      templateEntityRefs: string[];
-    }
-  >;
 }>;
 
 // @alpha

@@ -670,43 +670,6 @@ describe.each([
           expect(taskBroker.get).toHaveBeenCalledWith('a-random-id');
           expect(response.error).not.toBeFalsy();
         });
-        it('disallows users from seeing runs of templates they do not own', async () => {
-          jest
-            .spyOn(permissionApi, 'authorizeConditional')
-            .mockImplementationOnce(async () => [
-              {
-                conditions: {
-                  resourceType: 'scaffolder-task',
-                  rule: 'HAS_TEMPLATE_ENTITY_REFS',
-                  params: {
-                    templateEntityRefs: [
-                      'template:deafult/foo',
-                      'template:default/bar',
-                    ],
-                  },
-                },
-                pluginId: 'scaffolder',
-                resourceType: 'scaffolder-task',
-                result: AuthorizeResult.CONDITIONAL,
-              },
-            ]);
-          (taskBroker.get as jest.Mocked<TaskBroker>['get']).mockResolvedValue({
-            id: 'a-random-id',
-            spec: {
-              templateInfo: { entityRef: 'template:default/not-foobar' },
-            } as any,
-            status: 'completed',
-            createdAt: '',
-            secrets: {
-              backstageToken: token,
-              __initiatorCredentials: JSON.stringify(credentials),
-            },
-          });
-
-          const response = await request(app).get(`/v2/tasks/a-random-id`);
-          expect(taskBroker.get).toHaveBeenCalledWith('a-random-id');
-          expect(response.error).not.toBeFalsy();
-        });
       });
 
       describe('GET /v2/tasks/:taskId/eventstream', () => {
@@ -998,45 +961,6 @@ data: {"id":1,"taskId":"a-random-id","type":"completion","createdAt":"","body":{
               __initiatorCredentials: JSON.stringify(credentials),
             },
             createdBy: 'not-user',
-          });
-
-          const response = await request(app).get(
-            `/v2/tasks/a-random-id/events`,
-          );
-          expect(taskBroker.get).toHaveBeenCalledWith('a-random-id');
-          expect(response.error).not.toBeFalsy();
-        });
-        it('disallows users from seeing runs of templates they do not own', async () => {
-          jest
-            .spyOn(permissionApi, 'authorizeConditional')
-            .mockImplementationOnce(async () => [
-              {
-                conditions: {
-                  resourceType: 'scaffolder-task',
-                  rule: 'HAS_TEMPLATE_ENTITY_REFS',
-                  params: {
-                    templateEntityRefs: [
-                      'template:deafult/foo',
-                      'template:default/bar',
-                    ],
-                  },
-                },
-                pluginId: 'scaffolder',
-                resourceType: 'scaffolder-task',
-                result: AuthorizeResult.CONDITIONAL,
-              },
-            ]);
-          (taskBroker.get as jest.Mocked<TaskBroker>['get']).mockResolvedValue({
-            id: 'a-random-id',
-            spec: {
-              templateInfo: { entityRef: 'template:default/not-foobar' },
-            } as any,
-            status: 'completed',
-            createdAt: '',
-            secrets: {
-              backstageToken: token,
-              __initiatorCredentials: JSON.stringify(credentials),
-            },
           });
 
           const response = await request(app).get(
@@ -1686,43 +1610,6 @@ data: {"id":1,"taskId":"a-random-id","type":"completion","createdAt":"","body":{
           expect(taskBroker.get).toHaveBeenCalledWith('a-random-id');
           expect(response.error).not.toBeFalsy();
         });
-        it('disallows users from seeing runs of templates they do not own', async () => {
-          jest
-            .spyOn(permissionApi, 'authorizeConditional')
-            .mockImplementationOnce(async () => [
-              {
-                conditions: {
-                  resourceType: 'scaffolder-task',
-                  rule: 'HAS_TEMPLATE_ENTITY_REFS',
-                  params: {
-                    templateEntityRefs: [
-                      'template:deafult/foo',
-                      'template:default/bar',
-                    ],
-                  },
-                },
-                pluginId: 'scaffolder',
-                resourceType: 'scaffolder-task',
-                result: AuthorizeResult.CONDITIONAL,
-              },
-            ]);
-          (taskBroker.get as jest.Mocked<TaskBroker>['get']).mockResolvedValue({
-            id: 'a-random-id',
-            spec: {
-              templateInfo: { entityRef: 'template:default/not-foobar' },
-            } as any,
-            status: 'completed',
-            createdAt: '',
-            secrets: {
-              backstageToken: token,
-              __initiatorCredentials: JSON.stringify(credentials),
-            },
-          });
-
-          const response = await request(app).get(`/v2/tasks/a-random-id`);
-          expect(taskBroker.get).toHaveBeenCalledWith('a-random-id');
-          expect(response.error).not.toBeFalsy();
-        });
       });
 
       describe('GET /v2/tasks/:taskId/eventstream', () => {
@@ -1915,45 +1802,6 @@ data: {"id":1,"taskId":"a-random-id","type":"completion","createdAt":"","body":{
           expect(taskBroker.get).toHaveBeenCalledWith('a-random-id');
           expect(response.error).not.toBeFalsy();
         });
-        it('disallows users from seeing runs of templates they do not own', async () => {
-          jest
-            .spyOn(permissionApi, 'authorizeConditional')
-            .mockImplementationOnce(async () => [
-              {
-                conditions: {
-                  resourceType: 'scaffolder-task',
-                  rule: 'HAS_TEMPLATE_ENTITY_REFS',
-                  params: {
-                    templateEntityRefs: [
-                      'template:deafult/foo',
-                      'template:default/bar',
-                    ],
-                  },
-                },
-                pluginId: 'scaffolder',
-                resourceType: 'scaffolder-task',
-                result: AuthorizeResult.CONDITIONAL,
-              },
-            ]);
-          (taskBroker.get as jest.Mocked<TaskBroker>['get']).mockResolvedValue({
-            id: 'a-random-id',
-            spec: {
-              templateInfo: { entityRef: 'template:default/not-foobar' },
-            } as any,
-            status: 'completed',
-            createdAt: '',
-            secrets: {
-              backstageToken: token,
-              __initiatorCredentials: JSON.stringify(credentials),
-            },
-          });
-
-          const response = await request(app).get(
-            `/v2/tasks/a-random-id/eventstream`,
-          );
-          expect(taskBroker.get).toHaveBeenCalledWith('a-random-id');
-          expect(response.error).not.toBeFalsy();
-        });
       });
 
       describe('GET /v2/tasks/:taskId/events', () => {
@@ -2086,45 +1934,6 @@ data: {"id":1,"taskId":"a-random-id","type":"completion","createdAt":"","body":{
               __initiatorCredentials: JSON.stringify(credentials),
             },
             createdBy: 'not-user',
-          });
-
-          const response = await request(app).get(
-            `/v2/tasks/a-random-id/events`,
-          );
-          expect(taskBroker.get).toHaveBeenCalledWith('a-random-id');
-          expect(response.error).not.toBeFalsy();
-        });
-        it('disallows users from seeing runs of templates they do not own', async () => {
-          jest
-            .spyOn(permissionApi, 'authorizeConditional')
-            .mockImplementationOnce(async () => [
-              {
-                conditions: {
-                  resourceType: 'scaffolder-task',
-                  rule: 'HAS_TEMPLATE_ENTITY_REFS',
-                  params: {
-                    templateEntityRefs: [
-                      'template:deafult/foo',
-                      'template:default/bar',
-                    ],
-                  },
-                },
-                pluginId: 'scaffolder',
-                resourceType: 'scaffolder-task',
-                result: AuthorizeResult.CONDITIONAL,
-              },
-            ]);
-          (taskBroker.get as jest.Mocked<TaskBroker>['get']).mockResolvedValue({
-            id: 'a-random-id',
-            spec: {
-              templateInfo: { entityRef: 'template:default/not-foobar' },
-            } as any,
-            status: 'completed',
-            createdAt: '',
-            secrets: {
-              backstageToken: token,
-              __initiatorCredentials: JSON.stringify(credentials),
-            },
           });
 
           const response = await request(app).get(
