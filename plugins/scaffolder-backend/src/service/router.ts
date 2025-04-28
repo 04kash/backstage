@@ -130,11 +130,7 @@ import {
   scaffolderTemplateRules,
   scaffolderTaskRules,
 } from './rules';
-import {
-  SerializedTask,
-  TaskFilter,
-  TaskFilters,
-} from '@backstage/plugin-scaffolder-node';
+import { SerializedTask, TaskFilters } from '@backstage/plugin-scaffolder-node';
 
 /**
  *
@@ -190,7 +186,7 @@ export type TaskPermissionRuleInput<
 > = PermissionRule<
   SerializedTask,
   {
-    property: TaskFilter['property'];
+    key: string;
     values: any;
   },
   typeof RESOURCE_TYPE_SCAFFOLDER_TASK,
@@ -530,7 +526,6 @@ export async function createRouter(
         resourceType: RESOURCE_TYPE_SCAFFOLDER_TASK,
         permissions: scaffolderTaskPermissions,
         rules: taskRules,
-        getResources: resourceRefs => taskBroker.getTasks(resourceRefs),
       },
     ],
     permissions: scaffolderPermissions,

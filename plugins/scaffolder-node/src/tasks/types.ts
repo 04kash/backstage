@@ -110,7 +110,7 @@ export type TaskBrokerDispatchOptions = {
  * @public
  */
 export type TaskFilter = {
-  property: 'createdBy';
+  key: string;
   values: Array<string> | undefined;
 };
 
@@ -203,8 +203,6 @@ export interface TaskBroker {
   }): Observable<{ events: SerializedTaskEvent[] }>;
 
   get(taskId: string): Promise<SerializedTask>;
-
-  getTasks(taskIds: string[]): Promise<SerializedTask[]>;
 
   list?(options?: {
     filters?: {

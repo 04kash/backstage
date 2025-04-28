@@ -67,7 +67,6 @@ import { TaskBrokerDispatchResult as TaskBrokerDispatchResult_2 } from '@backsta
 import { TaskCompletionState as TaskCompletionState_2 } from '@backstage/plugin-scaffolder-node';
 import { TaskContext as TaskContext_2 } from '@backstage/plugin-scaffolder-node';
 import { TaskEventType as TaskEventType_2 } from '@backstage/plugin-scaffolder-node';
-import { TaskFilter } from '@backstage/plugin-scaffolder-node';
 import { TaskFilters } from '@backstage/plugin-scaffolder-node';
 import { TaskRecovery } from '@backstage/plugin-scaffolder-common';
 import { TaskSecrets as TaskSecrets_2 } from '@backstage/plugin-scaffolder-node';
@@ -456,8 +455,6 @@ export class DatabaseTaskStore implements TaskStore {
   // (undocumented)
   getTask(taskId: string): Promise<SerializedTask_2>;
   // (undocumented)
-  getTasks(taskIds: string[]): Promise<SerializedTask_2[]>;
-  // (undocumented)
   getTaskState({ taskId }: { taskId: string }): Promise<
     | {
         state: JsonObject;
@@ -690,7 +687,7 @@ export type TaskPermissionRuleInput<
 > = PermissionRule<
   SerializedTask_2,
   {
-    property: TaskFilter['property'];
+    key: string;
     values: any;
   },
   typeof RESOURCE_TYPE_SCAFFOLDER_TASK,
@@ -725,8 +722,6 @@ export interface TaskStore {
   emitLogEvent(options: TaskStoreEmitOptions): Promise<void>;
   // (undocumented)
   getTask(taskId: string): Promise<SerializedTask>;
-  // (undocumented)
-  getTasks(taskIds: string[]): Promise<SerializedTask[]>;
   // (undocumented)
   getTaskState?({ taskId }: { taskId: string }): Promise<
     | {

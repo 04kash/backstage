@@ -390,8 +390,6 @@ export interface TaskBroker {
   // (undocumented)
   get(taskId: string): Promise<SerializedTask>;
   // (undocumented)
-  getTasks(taskIds: string[]): Promise<SerializedTask[]>;
-  // (undocumented)
   list?(options?: {
     filters?: {
       createdBy?: string | string[];
@@ -499,7 +497,7 @@ export type TaskEventType = 'completion' | 'log' | 'cancelled' | 'recovered';
 
 // @public
 export type TaskFilter = {
-  property: 'createdBy';
+  key: string;
   values: Array<string> | undefined;
 };
 
