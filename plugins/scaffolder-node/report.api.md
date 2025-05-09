@@ -498,7 +498,7 @@ export type TaskEventType = 'completion' | 'log' | 'cancelled' | 'recovered';
 // @public
 export type TaskFilter = {
   key: string;
-  values: Array<string> | undefined;
+  values?: string[];
 };
 
 // @public

@@ -187,7 +187,7 @@ export type TaskPermissionRuleInput<
   SerializedTask,
   {
     key: string;
-    values: any;
+    values?: string[];
   },
   typeof RESOURCE_TYPE_SCAFFOLDER_TASK,
   TParams
