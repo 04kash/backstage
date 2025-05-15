@@ -1833,6 +1833,9 @@ export { useApi };
 export { useApiHolder };
 
 // @public
+export function useAppNode(): AppNode | undefined;
+
+// @public
 export function useComponentRef<T extends {}>(
   ref: ComponentRef<T>,
 ): ComponentType<T>;
