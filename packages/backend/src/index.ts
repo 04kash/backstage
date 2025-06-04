@@ -45,6 +45,8 @@ backend.add(import('@backstage/plugin-kubernetes-backend'));
 backend.add(
   import('@backstage/plugin-permission-backend-module-allow-all-policy'),
 );
+backend.add(import('@backstage/plugin-catalog-backend-module-keycloak'));
+backend.add(import('@backstage/plugin-events-backend-module-keycloak'));
 backend.add(import('@backstage/plugin-permission-backend'));
 backend.add(import('@backstage/plugin-proxy-backend'));
 backend.add(import('@backstage/plugin-scaffolder-backend'));
