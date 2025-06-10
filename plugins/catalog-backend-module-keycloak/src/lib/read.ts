@@ -162,7 +162,7 @@ export async function getEntities<T extends Users | Groups>(
   return entityResults;
 }
 
-async function getAllGroupMembers<T extends Groups>(
+export async function getAllGroupMembers<T extends Groups>(
   groupsAPI: () => Promise<T>,
   groupId: string,
   config: KeycloakProviderConfig,
@@ -194,6 +194,40 @@ async function getAllGroupMembers<T extends Groups>(
   } while (totalMembers > 0);
 
   return allMembers;
+}
+
+export async function getAllGroups<T extends Users>(
+  usersAPI: () => Promise<T>,
+  userId: string,
+  config: KeycloakProviderConfig,
+  options?: { groupQuerySize?: number },
+): Promise<GroupRepresentation[]> {
+  const querySize = options?.groupQuerySize || 100;
+
+  let allGroups: GroupRepresentation[] = [];
+  let page = 0;
+  let totalGroups = 0;
+
+  do {
+    const users = await usersAPI();
+    const groups = await users.listGroups({
+      id: userId,
+      max: querySize,
+      realm: config.realm,
+      first: page * querySize,
+    });
+
+    if (groups.length > 0) {
+      allGroups = allGroups.concat(...groups);
+      totalGroups = groups.length; // Get the number of groups retrieved
+    } else {
+      totalGroups = 0; // No groups retrieved
+    }
+
+    page++;
+  } while (totalGroups > 0);
+
+  return allGroups;
 }
 
 export async function processGroupsRecursively(
