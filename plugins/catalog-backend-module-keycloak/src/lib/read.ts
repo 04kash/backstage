@@ -230,6 +230,15 @@ export async function getAllGroups<T extends Users>(
   return allGroups;
 }
 
+export async function getServerVersion(kcAdminClient: KeycloakAdminClient) {
+  const serverInfo = await kcAdminClient.serverInfo.find();
+  const serverVersion = parseInt(
+    serverInfo.systemInfo?.version?.slice(0, 2) || '',
+    10,
+  );
+  return serverVersion;
+}
+
 export async function processGroupsRecursively(
   kcAdminClient: KeycloakAdminClient,
   config: KeycloakProviderConfig,
@@ -322,12 +331,7 @@ export const readKeycloakRealm = async (
   let serverVersion: number;
 
   try {
-    await ensureTokenValid(client, config, logger);
-    const serverInfo = await client.serverInfo.find();
-    serverVersion = parseInt(
-      serverInfo.systemInfo?.version?.slice(0, 2) || '',
-      10,
-    );
+    serverVersion = await getServerVersion(client);
   } catch (error) {
     throw new Error(`Failed to retrieve Keycloak server information: ${error}`);
   }

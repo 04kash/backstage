@@ -48,6 +48,7 @@ import {
 import { readProviderConfigs } from '../lib/config';
 import {
   getAllGroups,
+  getServerVersion,
   parseGroup,
   parseUser,
   processGroupsRecursively,
@@ -256,16 +257,19 @@ export class KeycloakOrgEntityProvider implements EntityProvider {
    */
   async connect(connection: EntityProviderConnection) {
     this.connection = connection;
-    console.log(`Events: ${JSON.stringify(this.events)}`);
     await this.events?.subscribe({
       id: this.getProviderName(),
       topics: ['keycloak'],
       onEvent: async params => {
-        console.log('In KeycloakOrgEntityProvider, params:', params);
         const logger = this.options.logger;
         const provider = this.options.provider;
 
         logger.info(`Received event :${params.topic}`);
+
+        const eventPayload = params.eventPayload as {
+          type: string;
+          [key: string]: any;
+        };
 
         const KeyCloakAdminClientModule = await import(
           '@keycloak/keycloak-admin-client'
@@ -279,36 +283,36 @@ export class KeycloakOrgEntityProvider implements EntityProvider {
         await authenticate(kcAdminClient, provider, logger);
 
         if (
-          params.eventPayload.type === TOPIC_USER_CREATE ||
-          params.eventPayload.type === TOPIC_USER_DELETE ||
-          params.eventPayload.type === TOPIC_USER_UPDATE
+          eventPayload.type === TOPIC_USER_CREATE ||
+          eventPayload.type === TOPIC_USER_DELETE ||
+          eventPayload.type === TOPIC_USER_UPDATE
         ) {
           await this.onUserEvent({
             logger,
-            eventPayload: params.eventPayload,
+            eventPayload: eventPayload,
             client: kcAdminClient,
           });
         }
 
         if (
-          params.eventPayload.type === TOPIC_USER_ADD_GROUP ||
-          params.eventPayload.type === TOPIC_USER_REMOVE_GROUP
+          eventPayload.type === TOPIC_USER_ADD_GROUP ||
+          eventPayload.type === TOPIC_USER_REMOVE_GROUP
         ) {
           await this.onMembershipChange({
             logger,
-            eventPayload: params.eventPayload,
+            eventPayload: eventPayload,
             client: kcAdminClient,
           });
         }
 
         if (
-          params.eventPayload.type === TOPIC_GROUP_CREATE ||
-          params.eventPayload.type === TOPIC_GROUP_UPDATE ||
-          params.eventPayload.type === TOPIC_GROUP_DELETE
+          eventPayload.type === TOPIC_GROUP_CREATE ||
+          eventPayload.type === TOPIC_GROUP_UPDATE ||
+          eventPayload.type === TOPIC_GROUP_DELETE
         ) {
           await this.onGroupEvent({
             logger,
-            eventPayload: params.eventPayload,
+            eventPayload: eventPayload,
             client: kcAdminClient,
           });
         }
@@ -341,52 +345,6 @@ export class KeycloakOrgEntityProvider implements EntityProvider {
     })),
   });
 
-  private async onUserEdit(
-    userId: string,
-    client: KeycloakAdminClient,
-    provider: KeycloakProviderConfig,
-    logger: LoggerService,
-  ): Promise<void> {
-    const { items } = await this.catalogApi.getEntities({
-      filter: {
-        kind: 'User',
-        [`metadata.annotations.${KEYCLOAK_ID_ANNOTATION}`]: userId,
-      },
-    });
-
-    const oldUserEntity = items[0];
-
-    const newUser = await client.users.findOne({ id: userId });
-    if (!newUser) {
-      logger.debug(
-        `Failed to fetch user with ID ${userId} after USER_UPDATE event`,
-      );
-      return;
-    }
-
-    const newUserEntity = await parseUser(
-      newUser,
-      provider.realm,
-      [],
-      new Map(),
-      this.options.userTransformer,
-    );
-
-    if (!newUserEntity || !oldUserEntity) {
-      logger.debug(`Failed to parse user entity for user ID ${userId}`);
-      return;
-    }
-
-    const { added } = this.addEntitiesOperation([newUserEntity]);
-    const { removed } = this.removeEntitiesOperation([oldUserEntity]);
-
-    await this.connection!.applyMutation({
-      type: 'delta',
-      added: added,
-      removed: removed,
-    });
-  }
-
   private async onUserEvent(options: {
     logger?: LoggerService;
     eventPayload: any;
@@ -413,7 +371,7 @@ export class KeycloakOrgEntityProvider implements EntityProvider {
     }
 
     logger.info(
-      `Processed Keycloak user event: ${options.eventPayload.type} for user ID ${userId}`,
+      `Processed Keycloak User Event: ${options.eventPayload.type} for user ID ${userId}`,
     );
   }
 
@@ -460,26 +418,16 @@ export class KeycloakOrgEntityProvider implements EntityProvider {
     provider: KeycloakProviderConfig,
     logger: LoggerService,
   ): Promise<void> {
-    // Query the catalog for a user entity with the Keycloak ID annotation
-    const { items } = await this.catalogApi.getEntities({
+    const {
+      items: [userEntity],
+    } = await this.catalogApi.getEntities({
       filter: {
         kind: 'User',
         [`metadata.annotations.${KEYCLOAK_ID_ANNOTATION}`]: userId,
       },
     });
-    const userEntity = items[0];
-    // We have to Update the groups this user beloned to as well
 
-    // use getAllGroups to get all groups this user belongs to currently
-    const allGroups = await getAllGroups(
-      () => Promise.resolve(client.users),
-      userId,
-      provider,
-      {
-        groupQuerySize: provider.groupQuerySize,
-      },
-    );
-    // use a catalog call to get all oldGroupEntities this user belonged to
+    // Update Groups that the user belonged to
     const oldGroupEntityRefs =
       userEntity?.relations
         ?.filter(r => r.type === 'memberOf')
@@ -488,95 +436,27 @@ export class KeycloakOrgEntityProvider implements EntityProvider {
       await Promise.all(
         oldGroupEntityRefs.map(ref => this.catalogApi.getEntityByRef(ref)),
       )
-    ).filter((entity): entity is Entity => !!entity);
+    ).filter((entity): entity is Entity => !entity);
 
-    let rawKGroups: GroupRepresentationWithParent[] = [];
-
-    const serverInfo = await client.serverInfo.find();
-    const serverVersion = parseInt(
-      serverInfo.systemInfo?.version?.slice(0, 2) || '',
-      10,
-    );
-    const isVersion23orHigher = serverVersion >= 23;
-
-    if (isVersion23orHigher) {
-      rawKGroups = await processGroupsRecursively(
-        client,
-        provider,
-        logger,
-        allGroups,
-      );
-    } else {
-      rawKGroups = allGroups.reduce(
-        (acc, g) => acc.concat(...traverseGroups(g)),
-        [] as GroupRepresentationWithParent[],
-      );
-    }
-
-    const kGroups = await Promise.all(
-      rawKGroups.map(async g => {
-        g.members = await getAllGroupMembers(
-          async () => {
-            await ensureTokenValid(client, provider, logger);
-            return client.groups as Groups;
-          },
-          g.id!,
-          provider,
-          {
-            userQuerySize: provider.userQuerySize,
-          },
-        );
-
-        if (isVersion23orHigher) {
-          if (g.subGroupCount! > 0) {
-            await ensureTokenValid(client, provider, logger);
-            g.subGroups = await client.groups.listSubGroups({
-              parentId: g.id!,
-              first: 0,
-              max: g.subGroupCount,
-              briefRepresentation:
-                this.options.provider.briefRepresentation ??
-                KEYCLOAK_BRIEF_REPRESENTATION_DEFAULT,
+    const allGroups: GroupRepresentation[] = (
+      await Promise.all(
+        oldGroupEntities.map(async group => {
+          if (group.metadata.annotations) {
+            return await client.groups.findOne({
+              id: group.metadata.annotations[KEYCLOAK_ID_ANNOTATION],
               realm: provider.realm,
             });
           }
-          if (g.parentId) {
-            await ensureTokenValid(client, provider, logger);
-            const groupParent = await client.groups.findOne({
-              id: g.parentId,
-              realm: provider.realm,
-            });
-            g.parent = groupParent?.name;
-          }
-        }
+          return undefined;
+        }),
+      )
+    ).filter((g): g is GroupRepresentation => !g);
 
-        return g;
-      }),
-    );
-
-    const parsedGroups = await Promise.all(
-      kGroups.map(async g => {
-        // it is possible if fetch request failed
-        if (!g) {
-          return null;
-        }
-        const entity = await parseGroup(
-          g,
-          provider.realm,
-          this.options.groupTransformer,
-        );
-        if (entity) {
-          return {
-            ...g,
-            entity,
-          } as GroupRepresentationWithParentAndEntity;
-        }
-        return null;
-      }),
-    );
-    const filteredParsedGroups = parsedGroups.filter(
-      (group): group is GroupRepresentationWithParentAndEntity =>
-        group !== null,
+    const filteredParsedGroups = await this.createGroupEntities(
+      allGroups,
+      provider,
+      client,
+      logger,
     );
 
     if (!userEntity) {
@@ -599,6 +479,92 @@ export class KeycloakOrgEntityProvider implements EntityProvider {
       removed: removed,
     });
   }
+
+  private async onUserEdit(
+    userId: string,
+    client: KeycloakAdminClient,
+    provider: KeycloakProviderConfig,
+    logger: LoggerService,
+  ): Promise<void> {
+    const {
+      items: [oldUserEntity],
+    } = await this.catalogApi.getEntities({
+      filter: {
+        kind: 'User',
+        [`metadata.annotations.${KEYCLOAK_ID_ANNOTATION}`]: userId,
+      },
+    });
+
+    const oldGroupEntityRefs =
+      oldUserEntity?.relations
+        ?.filter(r => r.type === 'memberOf')
+        .map(r => r.targetRef) ?? [];
+    const oldGroupEntities = (
+      await Promise.all(
+        oldGroupEntityRefs.map(ref => this.catalogApi.getEntityByRef(ref)),
+      )
+    ).filter((entity): entity is Entity => !entity);
+
+    const allGroups: GroupRepresentation[] = (
+      await Promise.all(
+        oldGroupEntities.map(async group => {
+          if (group.metadata.annotations) {
+            return await client.groups.findOne({
+              id: group.metadata.annotations[KEYCLOAK_ID_ANNOTATION],
+              realm: provider.realm,
+            });
+          }
+          return undefined;
+        }),
+      )
+    ).filter((g): g is GroupRepresentation => !g);
+
+    const filteredParsedGroups = await this.createGroupEntities(
+      allGroups,
+      provider,
+      client,
+      logger,
+    );
+
+    const newUser = await client.users.findOne({ id: userId });
+    if (!newUser) {
+      logger.debug(
+        `Failed to fetch user with ID ${userId} after USER_UPDATE event`,
+      );
+      return;
+    }
+
+    const userToGroupMapping = new Map<string, string[]>();
+    if (newUser.username) {
+      userToGroupMapping.set(
+        newUser.username,
+        filteredParsedGroups.map(g => g.entity.metadata.name),
+      );
+    }
+
+    const newUserEntity = await parseUser(
+      newUser,
+      provider.realm,
+      filteredParsedGroups,
+      userToGroupMapping,
+      this.options.userTransformer,
+    );
+
+    if (!newUserEntity || !oldUserEntity) {
+      logger.debug(`Failed to parse user entity for user ID ${userId}`);
+      return;
+    }
+
+    const { added } = this.addEntitiesOperation([newUserEntity]);
+    const { removed } = this.removeEntitiesOperation([oldUserEntity]);
+
+    await this.connection!.applyMutation({
+      type: 'delta',
+      added: added,
+      removed: removed,
+    });
+  }
+
   private async onMembershipChange(options: {
     logger?: LoggerService;
     eventPayload: any;
@@ -615,17 +581,23 @@ export class KeycloakOrgEntityProvider implements EntityProvider {
     const userId = options.eventPayload.resourcePath.split('/')[1];
     const groupId = options.eventPayload.resourcePath.split('/')[3];
 
-    console.log(options.eventPayload.resourcePath);
-
-    const { items: oldUsers } = await this.catalogApi.getEntities({
+    const {
+      items: [oldUserEntity],
+    } = await this.catalogApi.getEntities({
       filter: {
         kind: 'User',
         [`metadata.annotations.${KEYCLOAK_ID_ANNOTATION}`]: userId,
       },
     });
 
-    const oldUserEntity = oldUsers[0];
-    const oldGroupEntity = await this.findGroupEntityById(groupId, logger);
+    const {
+      items: [oldGroupEntity],
+    } = await this.catalogApi.getEntities({
+      filter: {
+        kind: 'Group',
+        [`metadata.annotations.${KEYCLOAK_ID_ANNOTATION}`]: groupId,
+      },
+    });
 
     const newUser = await client.users.findOne({ id: userId });
     if (!newUser) {
@@ -699,9 +671,6 @@ export class KeycloakOrgEntityProvider implements EntityProvider {
       this.options.userTransformer,
     );
 
-    console.log(newGroupEntity);
-    console.log(newUserEntity);
-
     if (!newUserEntity || !oldUserEntity) {
       logger.debug(
         `Failed to find user entity for user ID ${userId} after membership change event`,
@@ -732,7 +701,7 @@ export class KeycloakOrgEntityProvider implements EntityProvider {
     });
 
     logger.info(
-      `Processed Keycloak user membership change event: ${options.eventPayload.type} for user ID ${userId} and group ID ${groupId}`,
+      `Processed Keycloak User Membership Change Event: ${options.eventPayload.type} for user ID ${userId} and group ID ${groupId}`,
     );
   }
 
@@ -777,10 +746,8 @@ export class KeycloakOrgEntityProvider implements EntityProvider {
     provider: KeycloakProviderConfig,
     client: KeycloakAdminClient,
   ) {
-    // 1. Top- group: fetch group by ID and add it as a new entity in the catalog (no `/children` in resourcePath)
-    // 2. Subgrouplevel: update the parent group and add the new subgroup as a separate entity in the catalog (`/children` in resourcePath)
+    // 1. Top-level group: fetch group by ID and add it as a new entity in the catalog
     if (resourcePath.length === 2) {
-      // Top-level group
       const groupId = resourcePath[1];
       const group = await client.groups.findOne({ id: groupId });
       if (!group) {
@@ -807,9 +774,11 @@ export class KeycloakOrgEntityProvider implements EntityProvider {
         removed: [],
       });
       logger.info(
-        `Processed Keycloak group creation event for top-level group ID ${groupId}`,
+        `Processed Keycloak Event ${options.eventPayload.type} for top-level group ID ${groupId}`,
       );
-    } else if (resourcePath.length === 3) {
+    }
+    // 2. Subgroup: update the parent group and add the new subgroup as a separate entity in the catalog
+    else if (resourcePath.length === 3) {
       const parentGroupId = resourcePath[1];
       const subgroupId = JSON.parse(options.eventPayload.representation).id;
       const newParentGroup = (await client.groups.findOne({
@@ -832,47 +801,27 @@ export class KeycloakOrgEntityProvider implements EntityProvider {
       }
 
       // Find the old parent group entity
-      const { items: oldParentGroups } = await this.catalogApi.getEntities({
+      const {
+        items: [oldParentGroupEntity],
+      } = (await this.catalogApi.getEntities({
         filter: {
           kind: 'Group',
           [`metadata.annotations.${KEYCLOAK_ID_ANNOTATION}`]: parentGroupId,
         },
-      });
-      const oldParentGroupEntity = oldParentGroups[0] as GroupEntity;
+      })) as { items: [GroupEntity] };
+
       if (!oldParentGroupEntity) {
         logger.debug(
           `Failed to find old parent group entity for group ID ${parentGroupId} after GROUP_CREATE event`,
         );
         return;
       }
-      console.log(
-        `Old parent group entity: ${JSON.stringify(oldParentGroupEntity)}`,
-      );
 
-      subgroup.parent = newParentGroup.name;
-
-      await ensureTokenValid(client, provider, logger);
-      newParentGroup.subGroups = await client.groups.listSubGroups({
-        parentId: newParentGroup.id!,
-        first: 0,
-        max: newParentGroup.subGroupCount,
-        briefRepresentation:
-          provider.briefRepresentation ?? KEYCLOAK_BRIEF_REPRESENTATION_DEFAULT,
-        realm: provider.realm,
-      });
-
-      const parsedGroups = await Promise.all(
-        [newParentGroup, subgroup].map(async group => {
-          return await parseGroup(
-            group,
-            provider.realm,
-            this.options.groupTransformer,
-          );
-        }),
-      );
-
-      const filteredParsedGroups = parsedGroups.filter(
-        group => group !== undefined,
+      const filteredParsedGroups = await this.createGroupEntities(
+        [subgroup, newParentGroup],
+        provider,
+        client,
+        logger,
       );
 
       if (filteredParsedGroups.length === 0) {
@@ -882,13 +831,9 @@ export class KeycloakOrgEntityProvider implements EntityProvider {
         return;
       }
 
-      console.log(
-        `New parent group entity: ${JSON.stringify(filteredParsedGroups[0])}`,
+      const { added } = this.addEntitiesOperation(
+        filteredParsedGroups.map(g => g.entity),
       );
-      console.log(
-        `New subgroup entity: ${JSON.stringify(filteredParsedGroups[1])}`,
-      );
-      const { added } = this.addEntitiesOperation(filteredParsedGroups);
       const { removed } = this.removeEntitiesOperation([oldParentGroupEntity]);
       await this.connection!.applyMutation({
         type: 'delta',
@@ -896,7 +841,7 @@ export class KeycloakOrgEntityProvider implements EntityProvider {
         removed: removed,
       });
       logger.info(
-        `Processed Keycloak group creation event for subgroup ID ${subgroupId} under parent group ID ${parentGroupId}`,
+        `Processed Keycloak Event: ${options.eventPayload.type} for subgroup ID ${subgroupId} under parent group ID ${parentGroupId}`,
       );
     }
   }
@@ -908,8 +853,14 @@ export class KeycloakOrgEntityProvider implements EntityProvider {
     client: KeycloakAdminClient,
   ) {
     const groupId = resourcePath[1];
-    const deletedGroup = await this.findGroupEntityById(groupId, logger);
-    if (!deletedGroup) return;
+    const {
+      items: [deletedGroup],
+    } = (await this.catalogApi.getEntities({
+      filter: {
+        kind: 'Group',
+        [`metadata.annotations.${KEYCLOAK_ID_ANNOTATION}`]: groupId,
+      },
+    })) as { items: [GroupEntity] };
 
     const parentEntityRef = this.getParentEntityRef(deletedGroup);
     const subgroupRefs = this.getSubgroupRefs(deletedGroup);
@@ -918,12 +869,25 @@ export class KeycloakOrgEntityProvider implements EntityProvider {
       ? await this.catalogApi.getEntityByRef(parentEntityRef)
       : undefined;
 
-    const validSubgroupEntities = await this.getValidEntities(subgroupRefs);
+    const validSubgroupEntities = await this.getEntitiesByRefs(subgroupRefs);
 
-    const newParentEntity = await this.getNewParentEntity(
-      oldParentEntity,
+    let newParent;
+    if (
+      oldParentEntity &&
+      oldParentEntity.metadata &&
+      oldParentEntity.metadata.annotations &&
+      oldParentEntity.metadata.annotations[KEYCLOAK_ID_ANNOTATION]
+    ) {
+      newParent = (await client.groups.findOne({
+        id: oldParentEntity.metadata.annotations[KEYCLOAK_ID_ANNOTATION],
+      })) as GroupRepresentationWithParent;
+    }
+
+    const [newParentEntity] = await this.createGroupEntities(
+      [newParent].filter((g): g is GroupRepresentationWithParent => !!g),
       provider,
       client,
+      logger,
     );
 
     const userMembershipsToUpdate = this.collectUserMemberships(
@@ -940,7 +904,7 @@ export class KeycloakOrgEntityProvider implements EntityProvider {
       );
 
     const { added } = this.addEntitiesOperation([
-      ...(newParentEntity ? [newParentEntity] : []),
+      ...(newParentEntity ? [newParentEntity.entity] : []),
       ...newUserEntities,
     ]);
 
@@ -962,24 +926,6 @@ export class KeycloakOrgEntityProvider implements EntityProvider {
     );
   }
 
-  private async findGroupEntityById(
-    groupId: string,
-    logger: LoggerService,
-  ): Promise<GroupEntity | undefined> {
-    const { items: groups } = await this.catalogApi.getEntities({
-      filter: {
-        kind: 'Group',
-        [`metadata.annotations.${KEYCLOAK_ID_ANNOTATION}`]: groupId,
-      },
-    });
-    const group = groups[0] as GroupEntity;
-    if (!group) {
-      logger.debug(`Failed to fetch group with ID ${groupId}`);
-      return undefined;
-    }
-    return group;
-  }
-
   private getParentEntityRef(group: GroupEntity): string | undefined {
     return group.relations?.find(relation => relation.type === 'childOf')
       ?.targetRef;
@@ -993,40 +939,11 @@ export class KeycloakOrgEntityProvider implements EntityProvider {
     );
   }
 
-  private async getValidEntities(refs: string[]): Promise<Entity[]> {
+  private async getEntitiesByRefs(refs: string[]): Promise<Entity[]> {
     const entities = await Promise.all(
       refs.map(ref => this.catalogApi.getEntityByRef(ref)),
     );
     return entities.filter((entity): entity is Entity => !!entity);
-  }
-
-  private async getNewParentEntity(
-    oldParentEntity: Entity | undefined,
-    provider: KeycloakProviderConfig,
-    client: KeycloakAdminClient,
-  ): Promise<GroupEntity | undefined> {
-    if (oldParentEntity?.metadata.annotations?.[KEYCLOAK_ID_ANNOTATION]) {
-      const newParent = (await client.groups.findOne({
-        id: oldParentEntity.metadata.annotations[KEYCLOAK_ID_ANNOTATION],
-      })) as GroupRepresentationWithParent;
-      if (newParent) {
-        newParent.subGroups = await client.groups.listSubGroups({
-          parentId: newParent.id!,
-          first: 0,
-          max: newParent.subGroupCount,
-          briefRepresentation:
-            provider.briefRepresentation ??
-            KEYCLOAK_BRIEF_REPRESENTATION_DEFAULT,
-          realm: provider.realm,
-        });
-        return await parseGroup(
-          newParent,
-          provider.realm,
-          this.options.groupTransformer,
-        );
-      }
-    }
-    return undefined;
   }
 
   private collectUserMemberships(
@@ -1091,7 +1008,7 @@ export class KeycloakOrgEntityProvider implements EntityProvider {
             },
           );
 
-          const filteredParsedGroups = await this.parseUserGroups(
+          const filteredParsedGroups = await this.createGroupEntities(
             allGroups,
             provider,
             client,
@@ -1142,7 +1059,7 @@ export class KeycloakOrgEntityProvider implements EntityProvider {
     return { oldUserEntities, newUserEntities };
   }
 
-  private async parseUserGroups(
+  private async createGroupEntities(
     allGroups: GroupRepresentationWithParent[],
     provider: KeycloakProviderConfig,
     client: KeycloakAdminClient,
@@ -1150,11 +1067,16 @@ export class KeycloakOrgEntityProvider implements EntityProvider {
   ): Promise<GroupRepresentationWithParentAndEntity[]> {
     let rawKGroups: GroupRepresentationWithParent[] = [];
 
-    const serverInfo = await client.serverInfo.find();
-    const serverVersion = parseInt(
-      serverInfo.systemInfo?.version?.slice(0, 2) || '',
-      10,
-    );
+    let serverVersion: number;
+
+    try {
+      serverVersion = await getServerVersion(client);
+    } catch (error) {
+      throw new Error(
+        `Failed to retrieve Keycloak server information: ${error}`,
+      );
+    }
+
     const isVersion23orHigher = serverVersion >= 23;
 
     if (isVersion23orHigher) {
