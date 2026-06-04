@@ -78,7 +78,7 @@ describe('createGithubSignatureValidator', () => {
   };
   const payloadString = JSON.stringify(payload);
   const payloadBuffer = Buffer.from(payloadString);
-  const validSignature = sign({ secret, algorithm: 'sha256' }, payloadString);
+  const validSignature = sign(secret, payloadString);
 
   const requestWithSignature = async (signature: string | undefined) => {
     return {

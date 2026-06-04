@@ -28,7 +28,7 @@ describe('eventsModuleGithubWebhook', () => {
   const payloadString = '{"test": "payload", "score": 5.0}';
   const payload = JSON.parse(payloadString);
   const payloadBuffer = Buffer.from(payloadString);
-  const validSignature = sign({ secret, algorithm: 'sha256' }, payloadString);
+  const validSignature = sign(secret, payloadString);
   const requestWithSignature = async (signature?: string) => {
     return {
       body: payload,

@@ -32,7 +32,7 @@ import {
   ScmIntegrations,
   GithubCredentials,
 } from '@backstage/integration';
-import { RestEndpointMethodTypes } from '@octokit/rest';
+import type { RestEndpointMethodTypes } from '@octokit/rest';
 import fetch, { RequestInit, Response } from 'node-fetch';
 import parseGitUrl from 'git-url-parse';
 import { Minimatch } from 'minimatch';

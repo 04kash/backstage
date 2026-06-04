@@ -912,36 +912,7 @@ export const createGraphqlClient = (args: {
   const { headers, baseUrl, logger } = args;
   const ThrottledOctokit = Octokit.plugin(throttling, retry);
   const octokit = new ThrottledOctokit({
-    throttle: {
-      onRateLimit: (retryAfter, rateLimitData, _, retryCount) => {
-        logger.warn(
-          `Request quota exhausted for request ${rateLimitData?.method} ${rateLimitData?.url}`,
-        );
-
-        if (retryCount < 2) {
-          logger.warn(
-            `Retrying after ${retryAfter} seconds for the ${retryCount} time due to Rate Limit!`,
-          );
-          return true;
-        }
-
-        return false;
-      },
-      onSecondaryRateLimit: (retryAfter, rateLimitData, _, retryCount) => {
-        logger.warn(
-          `Secondary Rate Limit Exhausted for request ${rateLimitData?.method} ${rateLimitData?.url}`,
-        );
-
-        if (retryCount < 2) {
-          logger.warn(
-            `Retrying after ${retryAfter} seconds for the ${retryCount} time due to Secondary Rate Limit!`,
-          );
-          return true;
-        }
-
-        return false;
-      },
-    },
+    throttle: octokitThrottlingOptions(logger),
   });
 
   const client = octokit.graphql.defaults({

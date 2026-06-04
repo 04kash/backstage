@@ -17,7 +17,10 @@
 import { GithubCredentialsProvider } from './types';
 
 const octokit = {
-  paginate: async (fn: any) => (await fn()).data,
+  paginate: async (fn: any) => {
+    const { data } = await fn();
+    return data.repositories ?? data;
+  },
   apps: {
     listInstallations: jest.fn(),
     listReposAccessibleToInstallation: jest.fn(),
@@ -499,6 +502,7 @@ describe('SingleInstanceGithubCredentialsProvider tests', () => {
 
     octokit.apps.listReposAccessibleToInstallation.mockReturnValue({
       data: {
+        total_count: 1,
         repositories: [{ name: repoName }],
       },
     } as RestEndpointMethodTypes['apps']['listReposAccessibleToInstallation']['response']);

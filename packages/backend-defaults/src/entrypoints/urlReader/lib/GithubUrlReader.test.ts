@@ -659,17 +659,23 @@ describe('GithubUrlReader', () => {
     const githubTreeContents: GhTreeResponse['tree'] = [
       {
         path: 'mkdocs.yml',
+        mode: '100644',
         type: 'blob',
+        sha: '1',
         url: 'https://api.github.com/repos/backstage/mock/git/blobs/1',
       },
       {
         path: 'docs',
+        mode: '040000',
         type: 'tree',
+        sha: '2',
         url: 'https://api.github.com/repos/backstage/mock/git/trees/2',
       },
       {
         path: 'docs/index.md',
+        mode: '100644',
         type: 'blob',
+        sha: '3',
         url: 'https://api.github.com/repos/backstage/mock/git/blobs/3',
       },
     ];
@@ -677,17 +683,23 @@ describe('GithubUrlReader', () => {
     const gheTreeContents: GhTreeResponse['tree'] = [
       {
         path: 'mkdocs.yml',
+        mode: '100644',
         type: 'blob',
+        sha: '1',
         url: 'https://ghe.github.com/api/v3/repos/backstage/mock/git/blobs/1',
       },
       {
         path: 'docs',
+        mode: '040000',
         type: 'tree',
+        sha: '2',
         url: 'https://ghe.github.com/api/v3/repos/backstage/mock/git/trees/2',
       },
       {
         path: 'docs/index.md',
+        mode: '100644',
         type: 'blob',
+        sha: '3',
         url: 'https://ghe.github.com/api/v3/repos/backstage/mock/git/blobs/3',
       },
     ];

@@ -10,7 +10,7 @@ import { createPullRequest } from 'octokit-plugin-create-pull-request';
 import { GithubCredentialsProvider } from '@backstage/integration';
 import { LoggerService } from '@backstage/backend-plugin-api';
 import { Octokit } from 'octokit';
-import { OctokitOptions } from '@octokit/core/dist-types/types';
+import type { OctokitOptions } from '@octokit/core';
 import { ScmIntegrationRegistry } from '@backstage/integration';
 import { ScmIntegrations } from '@backstage/integration';
 import { TemplateAction } from '@backstage/plugin-scaffolder-node';
@@ -67,15 +67,15 @@ export function createGithubBranchProtectionAction(options: {
     dismissStaleReviews?: boolean | undefined;
     bypassPullRequestAllowances?:
       | {
-          users?: string[] | undefined;
           apps?: string[] | undefined;
           teams?: string[] | undefined;
+          users?: string[] | undefined;
         }
       | undefined;
     restrictions?:
       | {
-          users: string[];
           teams: string[];
+          users: string[];
           apps?: string[] | undefined;
         }
       | undefined;
@@ -242,9 +242,9 @@ export function createGithubRepoCreateAction(options: {
     branch?: string | undefined;
     bypassPullRequestAllowances?:
       | {
-          users?: string[] | undefined;
           apps?: string[] | undefined;
           teams?: string[] | undefined;
+          users?: string[] | undefined;
         }
       | undefined;
     collaborators?:
@@ -254,8 +254,8 @@ export function createGithubRepoCreateAction(options: {
               access: string;
             }
           | {
-              team: string;
               access: string;
+              team: string;
             }
         )[]
       | undefined;
@@ -291,8 +291,8 @@ export function createGithubRepoCreateAction(options: {
     requireLastPushApproval?: boolean | undefined;
     restrictions?:
       | {
-          users: string[];
           teams: string[];
+          users: string[];
           apps?: string[] | undefined;
         }
       | undefined;
@@ -329,16 +329,16 @@ export function createGithubRepoPushAction(options: {
     requiredStatusCheckContexts?: string[] | undefined;
     bypassPullRequestAllowances?:
       | {
-          users?: string[] | undefined;
           apps?: string[] | undefined;
           teams?: string[] | undefined;
+          users?: string[] | undefined;
         }
       | undefined;
     requiredApprovingReviewCount?: number | undefined;
     restrictions?:
       | {
-          users: string[];
           teams: string[];
+          users: string[];
           apps?: string[] | undefined;
         }
       | undefined;
@@ -399,16 +399,16 @@ export function createPublishGithubAction(options: {
     access?: string | undefined;
     bypassPullRequestAllowances?:
       | {
-          users?: string[] | undefined;
           apps?: string[] | undefined;
           teams?: string[] | undefined;
+          users?: string[] | undefined;
         }
       | undefined;
     requiredApprovingReviewCount?: number | undefined;
     restrictions?:
       | {
-          users: string[];
           teams: string[];
+          users: string[];
           apps?: string[] | undefined;
         }
       | undefined;
@@ -445,8 +445,8 @@ export function createPublishGithubAction(options: {
               access: string;
             }
           | {
-              team: string;
               access: string;
+              team: string;
             }
         )[]
       | undefined;
