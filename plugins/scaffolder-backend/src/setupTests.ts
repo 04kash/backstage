@@ -14,6 +14,14 @@
  * limitations under the License.
  */
 
+jest.mock('@octokit/auth-app', () => ({
+  createAppAuth: jest.fn(),
+}));
+
+jest.mock('@octokit/rest', () => ({
+  Octokit: jest.fn().mockImplementation(() => ({})),
+}));
+
 import { Settings } from 'luxon';
 
 Settings.defaultLocale = 'en';

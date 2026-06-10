@@ -14,5 +14,13 @@
  * limitations under the License.
  */
 
+jest.mock('@octokit/auth-app', () => ({
+  createAppAuth: jest.fn(),
+}));
+
+jest.mock('@octokit/rest', () => ({
+  Octokit: jest.fn().mockImplementation(() => ({})),
+}));
+
 global.setImmediate = require('node:timers').setImmediate;
 global.clearImmediate = require('node:timers').clearImmediate;

@@ -18,6 +18,26 @@ jest.mock('@octokit/auth-app', () => ({
   createAppAuth: jest.fn(),
 }));
 
+jest.mock('@octokit/webhooks', () => ({
+  emitterEventNames: [
+    'push',
+    'pull_request',
+    'pull_request.opened',
+    'ping',
+    'create',
+    'delete',
+  ],
+}));
+
+jest.mock('octokit-plugin-create-pull-request', () => {
+  const DELETE_FILE = Symbol('DELETE_FILE');
+
+  return {
+    DELETE_FILE,
+    createPullRequest: jest.fn(),
+  };
+});
+
 jest.mock('@octokit/rest', () => ({
   Octokit: jest.fn().mockImplementation(() => ({})),
 }));

@@ -14,4 +14,38 @@
  * limitations under the License.
  */
 
+jest.mock('@octokit/auth-app', () => ({
+  createAppAuth: jest.fn(),
+}));
+
+jest.mock('@octokit/rest', () => ({
+  Octokit: jest.fn().mockImplementation(() => ({})),
+}));
+
+jest.mock(
+  '@octokit/webhooks-methods',
+  () => {
+    const { createHmac, timingSafeEqual } = require('node:crypto');
+
+    async function sign(secret, payload) {
+      const algorithm = 'sha256';
+      return `${algorithm}=${createHmac(algorithm, secret)
+        .update(payload)
+        .digest('hex')}`;
+    }
+
+    async function verify(secret, eventPayload, signature) {
+      const signatureBuffer = Buffer.from(signature);
+      const verificationBuffer = Buffer.from(await sign(secret, eventPayload));
+      if (signatureBuffer.length !== verificationBuffer.length) {
+        return false;
+      }
+      return timingSafeEqual(signatureBuffer, verificationBuffer);
+    }
+
+    return { sign, verify };
+  },
+  { virtual: true },
+);
+
 export {};
