@@ -13,4 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+jest.mock('@octokit/auth-app', () => ({
+  createAppAuth: jest.fn(),
+}));
+
+jest.mock('@octokit/rest', () => ({
+  Octokit: jest.fn().mockImplementation(() => ({})),
+}));
+
 export {};

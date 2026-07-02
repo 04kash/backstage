@@ -14,6 +14,36 @@
  * limitations under the License.
  */
 
+jest.mock(
+  '@octokit/webhooks-methods',
+  () => {
+    const { createHmac, timingSafeEqual } = require('node:crypto');
+
+    async function sign(secret: string, payload: string) {
+      const algorithm = 'sha256';
+      return `${algorithm}=${createHmac(algorithm, secret)
+        .update(payload)
+        .digest('hex')}`;
+    }
+
+    async function verify(
+      secret: string,
+      eventPayload: string,
+      signature: string,
+    ) {
+      const signatureBuffer = Buffer.from(signature);
+      const verificationBuffer = Buffer.from(await sign(secret, eventPayload));
+      if (signatureBuffer.length !== verificationBuffer.length) {
+        return false;
+      }
+      return timingSafeEqual(signatureBuffer, verificationBuffer);
+    }
+
+    return { sign, verify };
+  },
+  { virtual: true },
+);
+
 import { ConfigReader } from '@backstage/config';
 import {
   RequestDetails,
@@ -78,7 +108,7 @@ describe('createGithubSignatureValidator', () => {
   };
   const payloadString = JSON.stringify(payload);
   const payloadBuffer = Buffer.from(payloadString);
-  const validSignature = sign({ secret, algorithm: 'sha256' }, payloadString);
+  const validSignature = sign(secret, payloadString);
 
   const requestWithSignature = async (signature: string | undefined) => {
     return {

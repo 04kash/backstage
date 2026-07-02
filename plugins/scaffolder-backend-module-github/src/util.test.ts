@@ -15,24 +15,15 @@
  */
 
 import { Octokit } from 'octokit';
-import { retry } from '@octokit/plugin-retry';
 import { mockServices } from '@backstage/backend-test-utils';
 import { isRetryEnabled, getOctokitClient } from './util';
 
 jest.mock('octokit', () => ({
-  Octokit: Object.assign(jest.fn(), {
-    plugin: jest.fn(),
-  }),
-}));
-
-jest.mock('@octokit/plugin-retry', () => ({
-  retry: jest.fn(),
+  Octokit: jest.fn(),
 }));
 
 const mockOctokitInstance = { request: jest.fn() };
-const MockOctokit = Octokit as unknown as jest.MockedClass<typeof Octokit> & {
-  plugin: jest.Mock;
-};
+const MockOctokit = Octokit as jest.MockedClass<typeof Octokit>;
 
 describe('isRetryEnabled', () => {
   it.each([
@@ -81,14 +72,12 @@ describe('getOctokitClient', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     MockOctokit.mockReturnValue(mockOctokitInstance as any);
-    MockOctokit.plugin.mockReturnValue(MockOctokit);
   });
 
   it('returns a plain Octokit client when retries is 0', () => {
     const retryOptions = { retries: 0 };
     const client = getOctokitClient(octokitOptions, logger, retryOptions);
 
-    expect(MockOctokit.plugin).not.toHaveBeenCalled();
     expect(MockOctokit).toHaveBeenCalledWith({
       ...octokitOptions,
       log: logger,
@@ -100,7 +89,6 @@ describe('getOctokitClient', () => {
     const retryOptions = { retries: 3, retryAfter: 0 };
     const client = getOctokitClient(octokitOptions, logger, retryOptions);
 
-    expect(MockOctokit.plugin).not.toHaveBeenCalled();
     expect(MockOctokit).toHaveBeenCalledWith({
       ...octokitOptions,
       log: logger,
@@ -111,7 +99,6 @@ describe('getOctokitClient', () => {
   it('returns a retry-enabled Octokit client with default retries and delay when retryOptions is undefined', () => {
     const client = getOctokitClient(octokitOptions, logger);
 
-    expect(MockOctokit.plugin).toHaveBeenCalledWith(retry);
     expect(MockOctokit).toHaveBeenCalledWith({
       ...octokitOptions,
       request: {
@@ -127,7 +114,6 @@ describe('getOctokitClient', () => {
     const retryOptions = { retries: 5, retryAfter: 2000 };
     const client = getOctokitClient(octokitOptions, logger, retryOptions);
 
-    expect(MockOctokit.plugin).toHaveBeenCalledWith(retry);
     expect(MockOctokit).toHaveBeenCalledWith({
       ...octokitOptions,
       request: {

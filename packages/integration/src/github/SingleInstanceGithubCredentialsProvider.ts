@@ -166,12 +166,9 @@ class GithubAppManager {
           baseUrl: this.baseUrl,
           auth: result.data.token,
         });
-        const repos = await installationClient.paginate(
+        const repositories = await installationClient.paginate(
           installationClient.apps.listReposAccessibleToInstallation,
         );
-        // The return type of the paginate method is incorrect.
-        const repositories: RestEndpointMethodTypes['apps']['listReposAccessibleToInstallation']['response']['data']['repositories'] =
-          repos.repositories ?? repos;
 
         repositoryNames = repositories.map(repository => repository.name);
       }
@@ -210,7 +207,8 @@ class GithubAppManager {
   getInstallations(): Promise<
     RestEndpointMethodTypes['apps']['listInstallations']['response']['data']
   > {
-    return this.appClient.paginate(this.appClient.apps.listInstallations);
+    const ret = this.appClient.paginate(this.appClient.apps.listInstallations);
+    return ret;
   }
 
   private async getInstallationData(owner: string): Promise<InstallationData> {

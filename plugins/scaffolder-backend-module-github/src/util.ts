@@ -21,9 +21,8 @@ import {
   ScmIntegrationRegistry,
 } from '@backstage/integration';
 import { parseRepoUrl } from '@backstage/plugin-scaffolder-node';
-import { OctokitOptions } from '@octokit/core/dist-types/types';
+import type { OctokitOptions } from '@octokit/core';
 import { Octokit } from 'octokit';
-import { retry } from '@octokit/plugin-retry';
 import { LoggerService } from '@backstage/backend-plugin-api';
 
 const DEFAULT_TIMEOUT_MS = 60_000;
@@ -103,19 +102,12 @@ export function getOctokitClient(
     });
   }
 
-  // Update the octokit options to include retry configuration with logging
-  const OctokitClient = Octokit.plugin(retry);
+  // The `octokit` package bundles @octokit/plugin-retry. Specifying these
+  // request options always retries regardless of the response code.
+  const retries = retryOptions?.retries ?? DEFAULT_RETRY_ATTEMPTS;
+  const retryAfter = retryOptions?.retryAfter ?? DEFAULT_RETRY_DELAY_MS;
 
-  // From the octokit/plugin-retry documentation, specifying these values will
-  // always retry regardless of the response code
-  const retries = retryOptions?.retries
-    ? retryOptions?.retries
-    : DEFAULT_RETRY_ATTEMPTS;
-  const retryAfter = retryOptions?.retryAfter
-    ? retryOptions?.retryAfter
-    : DEFAULT_RETRY_DELAY_MS;
-
-  return new OctokitClient({
+  return new Octokit({
     ...octokitOptions,
     request: {
       ...octokitOptions.request,
