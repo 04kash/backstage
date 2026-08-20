@@ -22,6 +22,7 @@ import { Config } from '@backstage/config';
 import { JsonValue } from '@backstage/types';
 import { SearchOptions } from 'ldapts';
 import mergeWith from 'lodash/mergeWith';
+import cloneDeep from 'lodash/cloneDeep';
 import { trimEnd } from 'lodash';
 import { RecursivePartial } from './util';
 
@@ -88,7 +89,7 @@ export type UserConfig = {
   dn: string;
   // The search options to use.
   // Only the scope, filter, attributes, and paged fields are supported. The
-  // default is scope "one" and attributes "*" and "+".
+  // default is scope "one" and a minimal attribute set for mapped fields.
   options: SearchOptions;
 
   // JSON paths (on a.b.c form) and hard coded values to set on those paths
@@ -185,10 +186,38 @@ export type VendorConfig = {
   uuidAttributeName?: string;
 };
 
+const DEFAULT_USER_SEARCH_ATTRIBUTES = [
+  'dn',
+  'entryDN',
+  'distinguishedName',
+  'entryUUID',
+  'objectGUID',
+  'ipaUniqueID',
+  'uid',
+  'cn',
+  'mail',
+  'memberOf',
+];
+
+const DEFAULT_GROUP_SEARCH_ATTRIBUTES = [
+  'dn',
+  'entryDN',
+  'distinguishedName',
+  'entryUUID',
+  'objectGUID',
+  'cn',
+  'description',
+  'groupType',
+  'memberOf',
+  // Required for directories that only store membership on groups (e.g. OpenLDAP
+  // groupOfNames) and do not populate user memberOf.
+  'member',
+];
+
 const defaultUserConfig = {
   options: {
     scope: 'one',
-    attributes: ['*', '+'],
+    attributes: DEFAULT_USER_SEARCH_ATTRIBUTES,
   },
   map: {
     rdn: 'uid',
@@ -202,7 +231,7 @@ const defaultUserConfig = {
 const defaultGroupConfig = {
   options: {
     scope: 'one',
-    attributes: ['*', '+'],
+    attributes: DEFAULT_GROUP_SEARCH_ATTRIBUTES,
   },
   map: {
     rdn: 'cn',
@@ -306,7 +335,7 @@ function readSetConfig(
   if (!c) {
     return undefined;
   }
-  return c.get();
+  return cloneDeep(c.get());
 }
 
 function readUserMapConfig(c: Config | undefined): Partial<UserConfig['map']> {

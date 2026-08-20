@@ -24,7 +24,6 @@ import {
   EntityProvider,
   EntityProviderConnection,
 } from '@backstage/plugin-catalog-node';
-import { merge } from 'lodash';
 import { randomUUID } from 'node:crypto';
 import {
   GroupTransformer,
@@ -283,19 +282,28 @@ export class LdapOrgEntityProvider implements EntityProvider {
     // Be lazy and create the client each time; even though it's pretty
     // inefficient, we usually only do this once per entire refresh loop and
     // don't have to worry about timeouts and reconnects etc.
-    const client = await LdapClient.create(
-      this.options.logger,
-      this.options.provider.target,
-      this.options.provider.bind,
-      this.options.provider.tls,
-    );
+    const [userClient, groupClient] = await Promise.all([
+      LdapClient.create(
+        this.options.logger,
+        this.options.provider.target,
+        this.options.provider.bind,
+        this.options.provider.tls,
+      ),
+      LdapClient.create(
+        this.options.logger,
+        this.options.provider.target,
+        this.options.provider.bind,
+        this.options.provider.tls,
+      ),
+    ]);
 
     const { users, groups } = await readLdapOrg(
-      client,
+      userClient,
       this.options.provider.users,
       this.options.provider.groups,
       this.options.provider.vendor,
       {
+        groupClient,
         groupTransformer: this.options.groupTransformer,
         userTransformer: this.options.userTransformer,
         logger,
@@ -369,15 +377,15 @@ function withLocations(providerId: string, entity: Entity): Entity {
   const dn =
     entity.metadata.annotations?.[LDAP_DN_ANNOTATION] || entity.metadata.name;
   const location = `ldap://${providerId}/${encodeURIComponent(dn)}`;
-  return merge(
-    {
-      metadata: {
-        annotations: {
-          [ANNOTATION_LOCATION]: location,
-          [ANNOTATION_ORIGIN_LOCATION]: location,
-        },
+  return {
+    ...entity,
+    metadata: {
+      ...entity.metadata,
+      annotations: {
+        ...entity.metadata.annotations,
+        [ANNOTATION_LOCATION]: location,
+        [ANNOTATION_ORIGIN_LOCATION]: location,
       },
     },
-    entity,
-  ) as Entity;
+  };
 }

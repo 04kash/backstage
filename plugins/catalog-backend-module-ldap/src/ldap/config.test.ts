@@ -47,7 +47,18 @@ describe('readLdapConfig', () => {
             dn: 'udn',
             options: {
               scope: 'one',
-              attributes: ['*', '+'],
+              attributes: [
+                'dn',
+                'entryDN',
+                'distinguishedName',
+                'entryUUID',
+                'objectGUID',
+                'ipaUniqueID',
+                'uid',
+                'cn',
+                'mail',
+                'memberOf',
+              ],
             },
             set: undefined,
             map: {
@@ -64,7 +75,18 @@ describe('readLdapConfig', () => {
             dn: 'gdn',
             options: {
               scope: 'one',
-              attributes: ['*', '+'],
+              attributes: [
+                'dn',
+                'entryDN',
+                'distinguishedName',
+                'entryUUID',
+                'objectGUID',
+                'cn',
+                'description',
+                'groupType',
+                'memberOf',
+                'member',
+              ],
             },
             set: undefined,
             map: {
@@ -120,7 +142,18 @@ describe('readLdapConfig', () => {
             dn: 'udn',
             options: {
               scope: 'one',
-              attributes: ['*', '+'],
+              attributes: [
+                'dn',
+                'entryDN',
+                'distinguishedName',
+                'entryUUID',
+                'objectGUID',
+                'ipaUniqueID',
+                'uid',
+                'cn',
+                'mail',
+                'memberOf',
+              ],
             },
             set: undefined,
             map: {
@@ -137,7 +170,18 @@ describe('readLdapConfig', () => {
             dn: 'gdn',
             options: {
               scope: 'one',
-              attributes: ['*', '+'],
+              attributes: [
+                'dn',
+                'entryDN',
+                'distinguishedName',
+                'entryUUID',
+                'objectGUID',
+                'cn',
+                'description',
+                'groupType',
+                'memberOf',
+                'member',
+              ],
             },
             set: undefined,
             map: {
