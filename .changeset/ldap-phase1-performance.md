@@ -1,5 +1,5 @@
 ---
-'@backstage/plugin-catalog-backend-module-ldap': patch
+'@backstage/plugin-catalog-backend-module-ldap': minor
 ---
 
 The LDAP org provider now parallelizes user and group reads, requests a minimal default LDAP attribute set instead of `['*', '+']`, hydrates group `member` lists by default (needed for OpenLDAP-style directories without user `memberOf`), only skips group member hydration when user `memberOf` is configured and group `member` is not requested, and reduces memory and CPU overhead during relation resolution, hierarchy building, and entity commit.

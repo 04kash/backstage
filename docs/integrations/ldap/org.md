@@ -40,6 +40,11 @@ catalog:
           timeout: PT15M
 ```
 
+During each refresh the provider opens two LDAP connections (one for user
+search and one for group search) so users and groups can be read in parallel.
+Some directories limit concurrent connections per bind account; check your
+server's limits if refreshes fail intermittently.
+
 Finally, update your backend by adding the following line:
 
 ```ts title="packages/backend/src/index.ts"
@@ -156,9 +161,9 @@ options:
   # to filter out disabled users.
   filter: (uid=*)
   # The attribute selectors for each item, as passed to the LDAP server.
-  # By default only attributes needed for entity mapping are requested. Set
-  # `attributes: ['*', '+']` to load all attributes if your transformers need
-  # additional LDAP fields.
+  # By default only attributes needed for entity mapping are requested. Custom
+  # `map.*` overrides are included automatically. Set `attributes: ['*', '+']`
+  # to load all attributes if your transformers need additional LDAP fields.
   attributes:
     - dn
     - entryDN
@@ -251,9 +256,9 @@ options:
   # to filter out disabled groups.
   filter: (&(objectClass=some-group-class)(!(groupType=email)))
   # The attribute selectors for each item, as passed to the LDAP server.
-  # By default only attributes needed for entity mapping are requested. Set
-  # `attributes: ['*', '+']` to load all attributes if your transformers need
-  # additional LDAP fields.
+  # By default only attributes needed for entity mapping are requested. Custom
+  # `map.*` overrides are included automatically. Set `attributes: ['*', '+']`
+  # to load all attributes if your transformers need additional LDAP fields.
   attributes:
     - dn
     - entryDN

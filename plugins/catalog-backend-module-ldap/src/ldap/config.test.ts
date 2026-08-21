@@ -285,7 +285,7 @@ describe('readLdapConfig', () => {
             dn: 'udn',
             options: {
               scope: 'base',
-              attributes: ['*'],
+              attributes: ['*', 'u', 'v', 'c', 'm', 'd', 'p'],
               filter: 'f',
               paged: true,
               timeLimit: 42,
@@ -310,7 +310,7 @@ describe('readLdapConfig', () => {
             dn: 'gdn',
             options: {
               scope: 'base',
-              attributes: ['*'],
+              attributes: ['*', 'u', 'v', 'd', 'c', 't', 'm', 'n', 'p'],
               filter: 'f',
               paged: {
                 pageSize: 7,
@@ -519,5 +519,43 @@ describe('readLdapConfig', () => {
 
     expect(actual[0].users).toHaveLength(0);
     expect(actual[0].groups).toHaveLength(0);
+  });
+
+  it('merges vendor and map attributes into effective search attributes', () => {
+    const config = {
+      catalog: {
+        providers: {
+          ldapOrg: {
+            default: {
+              target: 'target',
+              vendor: {
+                dnAttributeName: 'customDN',
+                uuidAttributeName: 'entryuuid',
+              },
+              users: {
+                dn: 'udn',
+                map: {
+                  picture: 'thumbnailPhoto',
+                },
+              },
+              groups: {
+                dn: 'gdn',
+                map: {
+                  type: 'tt',
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+    const actual = readProviderConfigs(new ConfigReader(config));
+
+    expect(actual[0].users[0].options.attributes).toEqual(
+      expect.arrayContaining(['customDN', 'entryuuid', 'thumbnailPhoto']),
+    );
+    expect(actual[0].groups[0].options.attributes).toEqual(
+      expect.arrayContaining(['customDN', 'entryuuid', 'tt']),
+    );
   });
 });
