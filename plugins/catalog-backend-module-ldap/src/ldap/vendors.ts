@@ -124,22 +124,18 @@ function decode(
 // Formats a Microsoft Active Directory binary-encoded uuid to a readable string
 // See https://github.com/ldapjs/node-ldapjs/issues/297#issuecomment-137765214
 function formatGUID(objectGUID: string | Buffer): string {
-  let data: Buffer;
-  if (typeof objectGUID === 'string') {
-    data = Buffer.from(objectGUID, 'binary');
-  } else {
-    data = objectGUID;
-  }
-  // GUID_FORMAT_D
-  let template = '{3}{2}{1}{0}-{5}{4}-{7}{6}-{8}{9}-{10}{11}{12}{13}{14}{15}';
+  const data =
+    typeof objectGUID === 'string'
+      ? Buffer.from(objectGUID, 'binary')
+      : objectGUID;
 
-  // check each byte
-  for (let i = 0; i < data.length; i++) {
-    let dataStr = data[i].toString(16);
-    dataStr = data[i] >= 16 ? dataStr : `0${dataStr}`;
-
-    // insert that character into the template
-    template = template.replace(`{${i}}`, dataStr);
-  }
-  return template;
+  // GUID_FORMAT_D — byte order per Active Directory objectGUID encoding
+  const hex = [...data].map(b => b.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(6, 8)}${hex.slice(4, 6)}${hex.slice(2, 4)}${hex.slice(
+    0,
+    2,
+  )}-${hex.slice(10, 12)}${hex.slice(8, 10)}-${hex.slice(14, 16)}${hex.slice(
+    12,
+    14,
+  )}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
 }

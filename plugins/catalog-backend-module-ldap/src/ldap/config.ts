@@ -22,6 +22,7 @@ import { Config } from '@backstage/config';
 import { JsonValue } from '@backstage/types';
 import { SearchOptions } from 'ldapts';
 import mergeWith from 'lodash/mergeWith';
+import cloneDeep from 'lodash/cloneDeep';
 import { trimEnd } from 'lodash';
 import { RecursivePartial } from './util';
 
@@ -88,7 +89,7 @@ export type UserConfig = {
   dn: string;
   // The search options to use.
   // Only the scope, filter, attributes, and paged fields are supported. The
-  // default is scope "one" and attributes "*" and "+".
+  // default is scope "one" and a minimal attribute set for mapped fields.
   options: SearchOptions;
 
   // JSON paths (on a.b.c form) and hard coded values to set on those paths
@@ -185,10 +186,38 @@ export type VendorConfig = {
   uuidAttributeName?: string;
 };
 
+const DEFAULT_USER_SEARCH_ATTRIBUTES = [
+  'dn',
+  'entryDN',
+  'distinguishedName',
+  'entryUUID',
+  'objectGUID',
+  'ipaUniqueID',
+  'uid',
+  'cn',
+  'mail',
+  'memberOf',
+];
+
+const DEFAULT_GROUP_SEARCH_ATTRIBUTES = [
+  'dn',
+  'entryDN',
+  'distinguishedName',
+  'entryUUID',
+  'objectGUID',
+  'cn',
+  'description',
+  'groupType',
+  'memberOf',
+  // Required for directories that only store membership on groups (e.g. OpenLDAP
+  // groupOfNames) and do not populate user memberOf.
+  'member',
+];
+
 const defaultUserConfig = {
   options: {
     scope: 'one',
-    attributes: ['*', '+'],
+    attributes: DEFAULT_USER_SEARCH_ATTRIBUTES,
   },
   map: {
     rdn: 'uid',
@@ -202,7 +231,7 @@ const defaultUserConfig = {
 const defaultGroupConfig = {
   options: {
     scope: 'one',
-    attributes: ['*', '+'],
+    attributes: DEFAULT_GROUP_SEARCH_ATTRIBUTES,
   },
   map: {
     rdn: 'cn',
@@ -214,6 +243,39 @@ const defaultGroupConfig = {
     members: 'member',
   },
 };
+
+function mappedAttributeNames(
+  map: Partial<UserConfig['map']> | Partial<GroupConfig['map']>,
+): string[] {
+  return Object.values(map).filter(
+    (value): value is string => typeof value === 'string' && value.length > 0,
+  );
+}
+
+function withEffectiveSearchAttributes<T extends UserConfig | GroupConfig>(
+  config: T,
+  vendor: VendorConfig | undefined,
+  baseAttributes: string[],
+): T {
+  const attributes = [
+    ...new Set(
+      [
+        ...(config.options.attributes ?? baseAttributes),
+        ...mappedAttributeNames(config.map),
+        vendor?.dnAttributeName,
+        vendor?.uuidAttributeName,
+      ].filter((value): value is string => Boolean(value)),
+    ),
+  ];
+
+  return {
+    ...config,
+    options: {
+      ...config.options,
+      attributes,
+    },
+  };
+}
 
 function freeze<T>(data: T): T {
   return JSON.parse(JSON.stringify(data), (_key, value) => {
@@ -306,7 +368,7 @@ function readSetConfig(
   if (!c) {
     return undefined;
   }
-  return c.get();
+  return cloneDeep(c.get());
 }
 
 function readUserMapConfig(c: Config | undefined): Partial<UserConfig['map']> {
@@ -403,17 +465,38 @@ function formatFilter(filter?: string): string | undefined {
 export function readLdapLegacyConfig(config: Config): LdapProviderConfig[] {
   const providerConfigs = config.getOptionalConfigArray('providers') ?? [];
   return providerConfigs.map(c => {
+    const vendor = readVendorConfig(c.getOptionalConfig('vendor'));
     const newConfig = {
       target: trimEnd(c.getString('target'), '/'),
       tls: readTlsConfig(c.getOptionalConfig('tls')),
       bind: readBindConfig(c.getOptionalConfig('bind')),
       users: readUserConfig(c.getConfig('users')).map(it => {
-        return mergeWith({}, defaultUserConfig, it, replaceArraysIfPresent);
+        const merged = mergeWith(
+          {},
+          defaultUserConfig,
+          it,
+          replaceArraysIfPresent,
+        );
+        return withEffectiveSearchAttributes(
+          merged,
+          vendor,
+          DEFAULT_USER_SEARCH_ATTRIBUTES,
+        );
       }),
       groups: readGroupConfig(c.getConfig('groups')).map(it => {
-        return mergeWith({}, defaultGroupConfig, it, replaceArraysIfPresent);
+        const merged = mergeWith(
+          {},
+          defaultGroupConfig,
+          it,
+          replaceArraysIfPresent,
+        );
+        return withEffectiveSearchAttributes(
+          merged,
+          vendor,
+          DEFAULT_GROUP_SEARCH_ATTRIBUTES,
+        );
       }),
-      vendor: readVendorConfig(c.getOptionalConfig('vendor')),
+      vendor,
     };
 
     return freeze(newConfig) as LdapProviderConfig;
@@ -444,6 +527,7 @@ export function readProviderConfigs(config: Config): LdapProviderConfig[] {
     const isUserList = Array.isArray(c.getOptional('users'));
     const isGroupList = Array.isArray(c.getOptional('groups'));
 
+    const vendor = readVendorConfig(c.getOptionalConfig('vendor'));
     const newConfig = {
       id,
       target: trimEnd(c.getString('target'), '/'),
@@ -454,17 +538,37 @@ export function readProviderConfigs(config: Config): LdapProviderConfig[] {
           ? c.getOptionalConfigArray('users')
           : c.getOptionalConfig('users'),
       ).map(it => {
-        return mergeWith({}, defaultUserConfig, it, replaceArraysIfPresent);
+        const merged = mergeWith(
+          {},
+          defaultUserConfig,
+          it,
+          replaceArraysIfPresent,
+        );
+        return withEffectiveSearchAttributes(
+          merged,
+          vendor,
+          DEFAULT_USER_SEARCH_ATTRIBUTES,
+        );
       }),
       groups: readGroupConfig(
         isGroupList
           ? c.getOptionalConfigArray('groups')
           : c.getOptionalConfig('groups'),
       ).map(it => {
-        return mergeWith({}, defaultGroupConfig, it, replaceArraysIfPresent);
+        const merged = mergeWith(
+          {},
+          defaultGroupConfig,
+          it,
+          replaceArraysIfPresent,
+        );
+        return withEffectiveSearchAttributes(
+          merged,
+          vendor,
+          DEFAULT_GROUP_SEARCH_ATTRIBUTES,
+        );
       }),
       schedule,
-      vendor: readVendorConfig(c.getOptionalConfig('vendor')),
+      vendor,
     };
 
     return freeze(newConfig) as LdapProviderConfig;

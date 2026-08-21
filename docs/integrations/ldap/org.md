@@ -40,6 +40,11 @@ catalog:
           timeout: PT15M
 ```
 
+During each refresh the provider opens two LDAP connections (one for user
+search and one for group search) so users and groups can be read in parallel.
+Some directories limit concurrent connections per bind account; check your
+server's limits if refreshes fail intermittently.
+
 Finally, update your backend by adding the following line:
 
 ```ts title="packages/backend/src/index.ts"
@@ -156,7 +161,20 @@ options:
   # to filter out disabled users.
   filter: (uid=*)
   # The attribute selectors for each item, as passed to the LDAP server.
-  attributes: ['*', '+']
+  # By default only attributes needed for entity mapping are requested. Custom
+  # `map.*` overrides are included automatically. Set `attributes: ['*', '+']`
+  # to load all attributes if your transformers need additional LDAP fields.
+  attributes:
+    - dn
+    - entryDN
+    - distinguishedName
+    - entryUUID
+    - objectGUID
+    - ipaUniqueID
+    - uid
+    - cn
+    - mail
+    - memberOf
   # This field is either 'false' to disable paging when reading from the
   # server, or an object on the form '{ pageSize: 100, pagePause: true }' that
   # specifies the details of how the paging shall work.
@@ -238,12 +256,32 @@ options:
   # to filter out disabled groups.
   filter: (&(objectClass=some-group-class)(!(groupType=email)))
   # The attribute selectors for each item, as passed to the LDAP server.
-  attributes: ['*', '+']
+  # By default only attributes needed for entity mapping are requested. Custom
+  # `map.*` overrides are included automatically. Set `attributes: ['*', '+']`
+  # to load all attributes if your transformers need additional LDAP fields.
+  attributes:
+    - dn
+    - entryDN
+    - distinguishedName
+    - entryUUID
+    - objectGUID
+    - cn
+    - description
+    - groupType
+    - memberOf
+    - member
   # This field is either 'false' to disable paging when reading from the
   # server, or an object on the form '{ pageSize: 100, pagePause: true }' that
   # specifies the details of how the paging shall work.
   paged: false
 ```
+
+Membership is resolved from user `memberOf` and/or group `member` when those
+attributes are requested. The default attribute sets request both so
+directories that only store membership on groups (for example OpenLDAP
+`groupOfNames`) still populate relations. If your directory fully populates
+user `memberOf` and group `member` lists are large, you can omit `member` from
+group `attributes` to skip hydrating group member lists.
 
 #### groups.set
 
