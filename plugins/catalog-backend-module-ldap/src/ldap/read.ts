@@ -67,11 +67,15 @@ function searchRequestsAttribute(
 }
 
 /**
- * True when user search config is set up to read membership from user
- * `memberOf` (or equivalent).
+ * True when every user search config can read membership from user
+ * `memberOf` (or equivalent). If any config disables user `memberOf` or does
+ * not request the mapped attribute, group-side `member` may still be needed.
  */
-function usersProvideMemberOf(userConfig: UserConfig[]): boolean {
-  return userConfig.some(cfg => {
+function allUsersCanProvideMemberOf(userConfig: UserConfig[]): boolean {
+  if (userConfig.length === 0) {
+    return false;
+  }
+  return userConfig.every(cfg => {
     if (cfg.map.memberOf === undefined || cfg.map.memberOf === null) {
       return false;
     }
@@ -375,12 +379,12 @@ export async function readLdapOrg(
   // with all relations etc filled in.
 
   const groupClient = options.groupClient ?? client;
-  // Prefer user memberOf when that is the only configured membership source.
-  // If group member lists are also requested (default for OpenLDAP-style
-  // directories), keep hydrating them so relations are not dropped when user
-  // memberOf is empty or absent.
+  // Prefer user memberOf only when every user config can source membership
+  // that way and group member lists are not requested. If any user config
+  // relies on group-side membership, keep hydrating group members.
   const skipGroupMembers =
-    usersProvideMemberOf(userConfig) && !groupsRequestMembers(groupConfig);
+    allUsersCanProvideMemberOf(userConfig) &&
+    !groupsRequestMembers(groupConfig);
 
   const [usersResult, groupsResult] = await Promise.all([
     readLdapUsers(client, userConfig, vendorConfig, {

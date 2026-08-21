@@ -1730,4 +1730,123 @@ describe('readLdapOrg', () => {
 
     expect(users[0].spec.memberOf).toEqual([]);
   });
+
+  it('hydrates group members when any user config cannot provide memberOf', async () => {
+    userClient.getVendor.mockResolvedValue(DefaultLdapVendor);
+    groupClient.getVendor.mockResolvedValue(DefaultLdapVendor);
+    userClient.search.mockImplementation(async dn => {
+      if (dn === 'ou=with-memberof') {
+        return {
+          searchEntries: [
+            {
+              dn: 'user-a-dn',
+              uid: 'user-a',
+              cn: 'User A',
+              mail: 'a@example.com',
+              memberOf: ['group-dn'],
+              entryDN: 'user-a-dn',
+              entryUUID: 'user-a-uuid',
+            },
+          ],
+          searchReferences: [],
+        };
+      }
+      return {
+        searchEntries: [
+          {
+            dn: 'user-b-dn',
+            uid: 'user-b',
+            cn: 'User B',
+            mail: 'b@example.com',
+            entryDN: 'user-b-dn',
+            entryUUID: 'user-b-uuid',
+          },
+        ],
+        searchReferences: [],
+      };
+    });
+    groupClient.search.mockResolvedValue({
+      searchEntries: [
+        {
+          dn: 'group-dn',
+          cn: 'group',
+          description: 'Group',
+          groupType: 'team',
+          member: ['user-b-dn'],
+          entryDN: 'group-dn',
+          entryUUID: 'group-uuid',
+        },
+      ],
+      searchReferences: [],
+    });
+
+    const userConfig: UserConfig[] = [
+      {
+        dn: 'ou=with-memberof',
+        options: {
+          attributes: ['uid', 'cn', 'mail', 'memberOf', 'entryDN', 'entryUUID'],
+        },
+        map: {
+          rdn: 'uid',
+          name: 'uid',
+          displayName: 'cn',
+          email: 'mail',
+          memberOf: 'memberOf',
+        },
+      },
+      {
+        dn: 'ou=without-memberof',
+        options: {
+          attributes: ['uid', 'cn', 'mail', 'entryDN', 'entryUUID'],
+        },
+        map: {
+          rdn: 'uid',
+          name: 'uid',
+          displayName: 'cn',
+          email: 'mail',
+          memberOf: null,
+        },
+      },
+    ];
+    const groupConfig: GroupConfig[] = [
+      {
+        dn: 'ou=groups',
+        options: {
+          attributes: [
+            'cn',
+            'description',
+            'groupType',
+            'entryDN',
+            'entryUUID',
+          ],
+        },
+        map: {
+          rdn: 'cn',
+          name: 'cn',
+          description: 'description',
+          displayName: 'cn',
+          type: 'groupType',
+          memberOf: null,
+          members: 'member',
+        },
+      },
+    ];
+
+    const { users } = await readLdapOrg(
+      userClient,
+      userConfig,
+      groupConfig,
+      undefined,
+      {
+        groupClient,
+        logger,
+      },
+    );
+
+    const userA = users.find(u => u.metadata.name === 'user-a');
+    const userB = users.find(u => u.metadata.name === 'user-b');
+
+    expect(userA?.spec.memberOf).toEqual(['group:default/group']);
+    expect(userB?.spec.memberOf).toEqual(['group:default/group']);
+  });
 });
